@@ -11,6 +11,7 @@ from app.schemas.report import ReportUploadUrlRequest, ReportUploadUrlResponse, 
 from app.db.models.family_member import FamilyMember
 from app.db.models.medical_record import MedicalRecord
 from app.services.s3 import s3_service
+from app.services.report_analyzer import report_analyzer
 
 router = APIRouter()
 
@@ -37,13 +38,15 @@ async def get_upload_url(
         content_type=request.content_type
     )
 
+    from app.db.models.medical_record import MedicalRecord, RecordTypeEnum
+    
     # Create Medical Record entry
     record_id = uuid.uuid4()
     new_record = MedicalRecord(
         id=record_id,
         family_member_id=request.family_member_id,
         title=request.title,
-        record_type=request.record_type,
+        record_type=RecordTypeEnum(request.record_type),
         s3_key=s3_data["s3_key"],
         record_date=request.record_date
     )
@@ -55,6 +58,47 @@ async def get_upload_url(
         s3_key=s3_data["s3_key"],
         upload_url=s3_data["upload_url"],
         expires_in_seconds=s3_data["expires_in_seconds"]
+    )
+
+@router.post("/{record_id}/analyze", response_model=MedicalRecordItem)
+async def analyze_medical_record(
+    record_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # Verify ownership
+    user_id = UUID(current_user["sub"])
+    stmt = select(MedicalRecord).join(FamilyMember).where(
+        MedicalRecord.id == record_id,
+        FamilyMember.user_id == user_id
+    )
+    result = await db.execute(stmt)
+    record = result.scalar_one_or_none()
+    
+    if not record or not record.s3_key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record or S3 key not found")
+
+    filename = record.s3_key.split('/')[-1]
+    
+    try:
+        extracted_data = await report_analyzer.analyze_report(record.s3_key, filename)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        
+    record.summary = extracted_data.get("summary", "")
+    record.extracted_data = {"parameters": extracted_data.get("extracted_parameters", [])}
+    await db.commit()
+    await db.refresh(record)
+
+    download_url = s3_service.generate_presigned_read_url(record.s3_key)
+
+    return MedicalRecordItem(
+        id=record.id,
+        title=record.title,
+        record_type=record.record_type.value if hasattr(record.record_type, 'value') else str(record.record_type),
+        record_date=record.record_date,
+        summary=record.summary,
+        download_url=download_url
     )
 
 @router.get("/{family_member_id}", response_model=ReportListResponse)

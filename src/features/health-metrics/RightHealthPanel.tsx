@@ -1,11 +1,59 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import axios from 'axios';
 import { Card } from '../../shared/ui/Card';
 import { Icon } from '../../shared/ui/Icon';
-import { mockHealthMetrics, mockUpcomingEvents } from '../../services/mockData';
+import { mockHealthMetrics } from '../../services/mockData';
 import avatar from '../../assets/avatar.jpg';
+import { usePatient } from '../../context/PatientContext';
+import { reportsApi } from '../../services/api/reportsApi';
 import './RightHealthPanel.css';
 
 export const RightHealthPanel: React.FC = () => {
+  const { activeFamilyMember, reports, refreshReports } = usePatient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeFamilyMember) return;
+
+    // Validate size (10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File must be under 10MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Get presigned URL
+      const data = await reportsApi.getUploadUrl({
+        family_member_id: activeFamilyMember.id,
+        title: file.name,
+        filename: file.name,
+        content_type: file.type || 'application/octet-stream',
+        record_type: 'lab_report',
+        record_date: new Date().toISOString().split('T')[0]
+      });
+
+      // 2. Upload to S3 directly
+      await axios.put(data.upload_url, file, {
+        headers: { 'Content-Type': file.type }
+      });
+
+      // 3. Trigger Nova Pro extraction
+      await reportsApi.triggerAnalysis(data.record_id);
+
+      // 4. Refresh reports
+      await refreshReports();
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("Failed to upload and analyze report.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <aside className="right-panel">
       <div className="right-panel-scrollable">
@@ -14,7 +62,6 @@ export const RightHealthPanel: React.FC = () => {
         <section className="panel-section">
           <div className="section-header">
             <h3 className="section-title">Health Overview</h3>
-            <span className="section-link">View All</span>
           </div>
           
           <div className="metrics-list">
@@ -29,36 +76,11 @@ export const RightHealthPanel: React.FC = () => {
                 </div>
                 <div className="metric-status status-normal">{mockHealthMetrics.heartRate.status}</div>
               </div>
-              <div className="metric-chart">
-                <svg viewBox="0 0 40 20" className="mini-chart chart-red">
-                  <path d="M0,10 L10,10 L15,2 L20,18 L25,10 L40,10" fill="none" strokeWidth="2" strokeLinejoin="round" />
-                </svg>
-              </div>
             </Card>
 
             <Card className="metric-card">
               <div className="metric-icon-bg bg-blue">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue">
-                  <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path>
-                </svg>
-              </div>
-              <div className="metric-content">
-                <div className="metric-label">Blood Pressure</div>
-                <div className="metric-value">
-                  {mockHealthMetrics.bloodPressure.value} <span className="metric-unit">{mockHealthMetrics.bloodPressure.unit}</span>
-                </div>
-                <div className="metric-status status-normal">{mockHealthMetrics.bloodPressure.status}</div>
-              </div>
-              <div className="metric-chart">
-                <svg viewBox="0 0 40 20" className="mini-chart chart-blue">
-                  <path d="M0,15 L10,12 L15,16 L20,8 L25,14 L30,5 L40,10" fill="none" strokeWidth="2" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </Card>
-
-            <Card className="metric-card">
-              <div className="metric-icon-bg bg-green">
-                <Icon name="health-score" size={20} className="text-green" />
+                <Icon name="health-score" size={20} className="text-blue" />
               </div>
               <div className="metric-content">
                 <div className="metric-label">Health Score</div>
@@ -67,35 +89,35 @@ export const RightHealthPanel: React.FC = () => {
                 </div>
                 <div className="metric-status status-good">{mockHealthMetrics.healthScore.status}</div>
               </div>
-              <div className="metric-chart flex items-center justify-center">
-                <div className="score-ring"></div>
-              </div>
             </Card>
           </div>
         </section>
 
-        {/* Upcoming */}
+        {/* Medical Reports */}
         <section className="panel-section">
           <div className="section-header">
-            <h3 className="section-title">Upcoming</h3>
+            <h3 className="section-title">Medical Reports</h3>
             <span className="section-link">View All</span>
           </div>
           
           <div className="upcoming-list">
-            {mockUpcomingEvents.map(event => (
-              <div key={event.id} className="upcoming-item">
-                <div className="upcoming-icon">
-                  <Icon name={event.type === 'lab' ? 'calendar' : 'symptom'} size={18} />
-                </div>
-                <div className="upcoming-content">
-                  <div className="upcoming-subtitle">{event.subtitle}</div>
-                  <div className="upcoming-title">{event.title}</div>
-                  <div className="upcoming-datetime">
-                    {event.date} • {event.time}
+            {reports.length === 0 ? (
+              <p style={{fontSize: '13px', color: '#888'}}>No reports uploaded yet.</p>
+            ) : (
+              reports.map(report => (
+                <div key={report.id} className="upcoming-item">
+                  <div className="upcoming-icon">
+                    <Icon name="report" size={18} />
                   </div>
+                  <div className="upcoming-content" style={{flex: 1}}>
+                    <div className="upcoming-subtitle">{report.record_date}</div>
+                    <div className="upcoming-title">{report.title}</div>
+                    {report.summary && <div style={{fontSize: '11px', color: '#888', marginTop: '4px'}}>{report.summary}</div>}
+                  </div>
+                  <a href={report.download_url} target="_blank" rel="noreferrer" style={{color: '#3b82f6', textDecoration: 'none'}}>View</a>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 
@@ -103,17 +125,20 @@ export const RightHealthPanel: React.FC = () => {
         <section className="panel-section">
           <h3 className="section-title mb-4">Quick Actions</h3>
           <div className="quick-action-btns">
-            <button className="qa-btn">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{display: 'none'}} 
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={handleUpload}
+            />
+            <button className="qa-btn" onClick={() => fileInputRef.current?.click()} disabled={isUploading || !activeFamilyMember}>
               <div className="qa-icon-wrapper"><Icon name="add-record" size={20} /></div>
-              <span>Add Record</span>
+              <span>{isUploading ? 'Uploading...' : 'Add Record'}</span>
             </button>
             <button className="qa-btn">
               <div className="qa-icon-wrapper"><Icon name="bell" size={20} /></div>
               <span>Reminders</span>
-            </button>
-            <button className="qa-btn">
-              <div className="qa-icon-wrapper"><Icon name="shield" size={20} /></div>
-              <span>Insurance</span>
             </button>
             <button className="qa-btn btn-emergency">
               <div className="qa-icon-wrapper emergency-wrapper">

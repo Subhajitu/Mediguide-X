@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_COGNITO_USER_POOL_ID: Optional[str] = None
     AWS_COGNITO_APP_CLIENT_ID: Optional[str] = None
+    AWS_COGNITO_APP_CLIENT_SECRET: Optional[str] = None
     AWS_S3_BUCKET_NAME: Optional[str] = None
     
     class Config:

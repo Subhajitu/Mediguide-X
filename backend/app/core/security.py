@@ -27,8 +27,9 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(auth_
     token = credentials.credentials
     if not settings.AWS_COGNITO_USER_POOL_ID:
         # Development mock
-        if token == "mock-token":
-            return {"sub": "00000000-0000-0000-0000-000000000000", "email": "test@example.com"}
+        if token.startswith("mock-token-"):
+            email = token.replace("mock-token-", "")
+            return {"sub": "00000000-0000-0000-0000-000000000000", "email": email}
         raise HTTPException(status_code=401, detail="Invalid token")
 
     try:
@@ -67,6 +68,23 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(auth_
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-async def get_current_user(claims: dict = Depends(verify_token)):
-    # In a real scenario, this would query the DB for the user matching the cognito 'sub'
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from app.db.session import get_db
+from app.db.models.user import User
+from app.core.exceptions import BadRequestException
+
+async def get_current_user(claims: dict = Depends(verify_token), db: AsyncSession = Depends(get_db)):
+    # AccessToken from Cognito doesn't always contain email, but it contains 'sub' or 'username'
+    cognito_sub = claims.get("sub") or claims.get("username")
+    result = await db.execute(select(User).where(User.cognito_sub == cognito_sub))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found in database")
+        
+    # We inject the real database ID as the 'sub' so that endpoints relying on current_user['sub'] work seamlessly.
+    claims["sub"] = str(user.id)
+    # Inject email into claims so endpoints like get_me can use it
+    claims["email"] = user.email
     return claims

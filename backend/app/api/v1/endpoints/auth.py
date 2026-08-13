@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
@@ -7,9 +7,26 @@ from app.schemas.auth import UserRegisterRequest, UserRegisterResponse, UserLogi
 from app.schemas.user import UserProfileResponse
 from app.core.security import get_current_user
 from app.core.exceptions import BadRequestException
-import uuid
+from app.core.config import settings
+import boto3
+import hmac
+import hashlib
+import base64
+
+def get_secret_hash(username: str, client_id: str, client_secret: str) -> str:
+    message = bytes(username + client_id, 'utf-8')
+    key = bytes(client_secret, 'utf-8')
+    secret_hash = base64.b64encode(hmac.new(key, message, digestmod=hashlib.sha256).digest()).decode()
+    return secret_hash
 
 router = APIRouter()
+
+cognito_client = boto3.client(
+    'cognito-idp',
+    region_name=settings.AWS_REGION,
+    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
+)
 
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -20,10 +37,38 @@ async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_
     if existing_user:
         raise BadRequestException(detail="Email already registered")
         
-    # In a real app, this is where we'd call boto3 to create the user in Cognito
-    # For now, we mock the cognito_sub
-    cognito_sub = str(uuid.uuid4())
-    
+    try:
+        kwargs = {
+            'ClientId': settings.AWS_COGNITO_APP_CLIENT_ID,
+            'Username': request.email,
+            'Password': request.password,
+            'UserAttributes': [
+                {'Name': 'email', 'Value': request.email},
+                {'Name': 'name', 'Value': request.full_name}
+            ]
+        }
+        if settings.AWS_COGNITO_APP_CLIENT_SECRET:
+            kwargs['SecretHash'] = get_secret_hash(
+                request.email, 
+                settings.AWS_COGNITO_APP_CLIENT_ID, 
+                settings.AWS_COGNITO_APP_CLIENT_SECRET
+            )
+            
+        response = cognito_client.sign_up(**kwargs)
+        cognito_sub = response['UserSub']
+        
+        # Auto-confirm the user for MVP so they can login immediately
+        if settings.AWS_COGNITO_USER_POOL_ID:
+            cognito_client.admin_confirm_sign_up(
+                UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
+                Username=request.email
+            )
+            
+    except cognito_client.exceptions.UsernameExistsException:
+        raise BadRequestException(detail="Email already registered in Cognito")
+    except Exception as e:
+        raise BadRequestException(detail=f"Cognito Error: {str(e)}")
+        
     new_user = User(
         email=request.email,
         full_name=request.full_name,
@@ -40,15 +85,46 @@ async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_
     )
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: UserLoginRequest):
-    # In a real app, this is where we'd call boto3 initiate_auth against Cognito
-    # Returning mock tokens for development scaffolding
-    return TokenResponse(
-        access_token="mock-access-token",
-        id_token="mock-token",
-        refresh_token="mock-refresh-token",
-        expires_in=3600
-    )
+async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db)):
+    # Check if user exists in the database
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    try:
+        auth_params = {
+            'USERNAME': request.email,
+            'PASSWORD': request.password
+        }
+        if settings.AWS_COGNITO_APP_CLIENT_SECRET:
+            auth_params['SECRET_HASH'] = get_secret_hash(
+                request.email, 
+                settings.AWS_COGNITO_APP_CLIENT_ID, 
+                settings.AWS_COGNITO_APP_CLIENT_SECRET
+            )
+            
+        response = cognito_client.initiate_auth(
+            ClientId=settings.AWS_COGNITO_APP_CLIENT_ID,
+            AuthFlow='USER_PASSWORD_AUTH',
+            AuthParameters=auth_params
+        )
+        
+        auth_result = response['AuthenticationResult']
+        
+        return TokenResponse(
+            access_token=auth_result['AccessToken'],
+            id_token=auth_result['IdToken'],
+            refresh_token=auth_result.get('RefreshToken', ''),
+            expires_in=auth_result['ExpiresIn']
+        )
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    except cognito_client.exceptions.UserNotConfirmedException:
+        raise HTTPException(status_code=401, detail="User is not confirmed")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 @router.get("/me", response_model=UserProfileResponse)
 async def get_me(claims: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):

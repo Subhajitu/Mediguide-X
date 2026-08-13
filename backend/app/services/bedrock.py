@@ -11,6 +11,7 @@ class BedrockService:
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
         )
         self.model_id_lite = "amazon.nova-lite-v1:0"
+        self.model_id_pro = "amazon.nova-pro-v1:0"
 
     def get_system_prompt(self) -> str:
         return (
@@ -19,53 +20,55 @@ class BedrockService:
             "Recommend when to consult a doctor. Do NOT provide a final medical diagnosis."
         )
 
+    def _execute_converse(self, model_id: str, messages: list, system: list, temperature: float = 0.3, max_tokens: int = 1024, tool_config: dict = None) -> dict:
+        inference_config = {
+            "temperature": temperature,
+            "maxTokens": max_tokens,
+            "topP": 0.9
+        }
+        kwargs = {
+            "modelId": model_id,
+            "messages": messages,
+            "system": system,
+            "inferenceConfig": inference_config
+        }
+        if tool_config:
+            kwargs["toolConfig"] = tool_config
+            
+        return self.bedrock_runtime.converse(**kwargs)
+
     async def invoke_nova_lite_chat(self, patient_context: str, user_message: str) -> str:
         """
         Sends the compressed patient context and the latest user message to Amazon Nova Lite.
         """
-        # Amazon Nova Converse API Format
         system = [{"text": self.get_system_prompt()}]
-        
-        # Combine the context and the user message to ensure the model sees both.
-        # The context can also be provided as part of the system prompt or user prompt.
         prompt_content = f"{patient_context}\n\n[USER INQUIRY]\n{user_message}"
-        
-        messages = [
-            {
-                "role": "user",
-                "content": [{"text": prompt_content}]
-            }
-        ]
+        messages = [{"role": "user", "content": [{"text": prompt_content}]}]
 
-        inference_config = {
-            "temperature": 0.3,
-            "maxTokens": 1024,
-            "topP": 0.9
-        }
-
+        import asyncio
+        loop = asyncio.get_event_loop()
         try:
-            # Note: We are using synchronous boto3 in an async function. 
-            # In a production FastAPI app, this should ideally be run in a ThreadPoolExecutor 
-            # or using aiobotocore to avoid blocking the event loop.
-            import asyncio
-            loop = asyncio.get_event_loop()
-            
-            def _invoke():
-                return self.bedrock_runtime.converse(
-                    modelId=self.model_id_lite,
-                    messages=messages,
-                    system=system,
-                    inferenceConfig=inference_config
-                )
-                
-            response = await loop.run_in_executor(None, _invoke)
-            
-            # Extract response text
-            ai_text = response["output"]["message"]["content"][0]["text"]
-            return ai_text
-
+            response = await loop.run_in_executor(None, self._execute_converse, self.model_id_lite, messages, system)
+            return response["output"]["message"]["content"][0]["text"]
         except Exception as e:
             print(f"Error invoking Bedrock Nova Lite: {e}")
+            raise e
+
+    async def invoke_nova_pro(self, messages: list, system_prompt: str, tool_config: dict = None, temperature: float = 0.1) -> dict:
+        """
+        Executes complex reasoning or multimodal tasks using Amazon Nova Pro.
+        Allows passing raw messages (which can contain images/documents) and tool configurations for structured JSON output.
+        """
+        system = [{"text": system_prompt}]
+        
+        import asyncio
+        loop = asyncio.get_event_loop()
+        try:
+            # For complex tasks like data extraction, we use lower temperature (0.1) and higher maxTokens (2048)
+            response = await loop.run_in_executor(None, self._execute_converse, self.model_id_pro, messages, system, temperature, 2048, tool_config)
+            return response
+        except Exception as e:
+            print(f"Error invoking Bedrock Nova Pro: {e}")
             raise e
 
 bedrock_service = BedrockService()

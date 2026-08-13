@@ -2,7 +2,7 @@ import React from 'react';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { SidebarLogo } from '../ui/Logo';
-import { type Conversation } from '../../services/mockData';
+import { type Conversation } from '../../types';
 import './Sidebar.css';
 
 interface SidebarProps {

@@ -6,39 +6,46 @@ import { QuickActionCards } from '../features/ai-consultation/QuickActionCards';
 import { ChatInput } from '../features/ai-consultation/ChatInput';
 import { ChatView } from '../features/ai-consultation/ChatView';
 import { RightHealthPanel } from '../features/health-metrics/RightHealthPanel';
-import { mockConsultationHistory, type Conversation, type Message } from '../services/mockData';
+import { AuthModal } from '../shared/components/AuthModal';
+import { FamilySelectorModal } from '../shared/components/FamilySelectorModal';
+import { useAuth } from '../context/AuthContext';
+import { usePatient } from '../context/PatientContext';
+import { consultationApi } from '../services/api/consultationApi';
+import type { Conversation, Message } from '../types';
 import './App.css';
 
-const buildLiveAiReply = (id: number, hasAskedFollowUp: boolean): Message => ({
-  id: `live-ai-${id}`,
-  sender: 'ai',
-  text: hasAskedFollowUp
-    ? "Thanks, that gives me enough context for general guidance. Based on what you shared, start with conservative care while watching for red flags.\n- Rest and hydrate steadily.\n- Track symptom timing, severity, and temperature if fever is present.\n- Avoid mixing medicines unless your clinician or pharmacist confirms it is safe.\n- Seek urgent care for breathing difficulty, chest pain, fainting, confusion, severe pain, or rapidly worsening symptoms.\nI can also prepare a concise doctor summary from this conversation."
-    : "I understand. Before I suggest next steps, I need to ask a few safety questions.\n- How old are you?\n- When did this start and is it getting worse?\n- Any fever, breathing difficulty, chest pain, severe pain, fainting, or confusion?\n- Are you taking any medicines or managing a chronic condition?",
-  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  suggestions: hasAskedFollowUp
-    ? ['Create doctor summary', 'Show red flags', 'Home care checklist', 'What should I monitor?']
-    : ['It started yesterday', 'No emergency symptoms', 'I take no regular medicines', 'I have a report to upload'],
-});
-
 const App: React.FC = () => {
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [conversations, setConversations] = useState<Conversation[]>(mockConsultationHistory);
-  const [isTyping, setIsTyping] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { activeFamilyMember, activeConsultationId, setConsultationId } = usePatient();
 
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
-  
-  const suggestions = activeConversation?.messages[activeConversation.messages.length - 1]?.suggestions || [];
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showFamilyModal, setShowFamilyModal] = useState(false);
+
+  // We keep local state for the active conversation for immediate UI updates
+  const activeConversation = conversations.find(c => c.id === activeConsultationId);
+  const suggestions = activeConversation 
+    ? activeConversation.messages[activeConversation.messages.length - 1]?.suggestions || []
+    : [];
 
   const handleSelectConversation = (id: string | null) => {
     setIsTyping(false);
-    setActiveConversationId(id);
+    setConsultationId(id);
   };
 
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = async (text: string) => {
     const cleanText = text.trim();
-    if (!cleanText) {
+    if (!cleanText || isTyping) return;
+
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (!activeFamilyMember) {
+      alert("Please add or select a family member first.");
       return;
     }
 
@@ -49,71 +56,86 @@ const App: React.FC = () => {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const targetId = activeConversationId || 'live-consultation';
-    const existingConversation = conversations.find(conversation => conversation.id === targetId);
+    let targetId = activeConsultationId;
+    let existingConversation = conversations.find(c => c.id === targetId);
 
-    if (!activeConversationId) {
-      setActiveConversationId(targetId);
-    }
-
-    if (existingConversation) {
+    if (existingConversation && targetId) {
       setConversations(current =>
-        current.map(conversation =>
-          conversation.id === targetId
-            ? { ...conversation, messages: [...conversation.messages, userMessage] }
-            : conversation
+        current.map(c =>
+          c.id === targetId ? { ...c, messages: [...c.messages, userMessage] } : c
         )
       );
     } else {
-      const liveConversation: Conversation = {
+      targetId = `temp-${Date.now()}`;
+      setConsultationId(targetId);
+      const newConv: Conversation = {
         id: targetId,
         title: cleanText.length > 42 ? `${cleanText.slice(0, 42)}...` : cleanText,
         date: 'Today',
         messages: [userMessage],
       };
-      setConversations(current => [liveConversation, ...current]);
-      setActiveConversationId(targetId);
+      setConversations(current => [newConv, ...current]);
     }
 
     setIsTyping(true);
-    window.setTimeout(() => {
+
+    try {
+      const response = await consultationApi.sendMessage(activeFamilyMember.id, {
+        // If it's a temp ID, we pass null to create a new consultation in DB
+        consultation_id: targetId?.startsWith('temp') ? null : targetId,
+        message: cleanText
+      });
+
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: response.ai_message,
+        timestamp: new Date(response.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: response.suggestions,
+      };
+
+      // Update the temp ID with the real DB ID if necessary
+      const realId = response.consultation_id;
+
       setConversations(current =>
-        current.map(conversation =>
-          conversation.id === targetId
-            ? {
-                ...conversation,
-                messages: [
-                  ...conversation.messages,
-                  buildLiveAiReply(
-                    conversation.messages.length + 1,
-                    conversation.messages.some(message => message.sender === 'ai')
-                  )
-                ]
-              }
-            : conversation
-        )
+        current.map(c => {
+          if (c.id === targetId) {
+            return {
+              ...c,
+              id: realId, // update to real ID
+              messages: [...c.messages, aiMessage]
+            };
+          }
+          return c;
+        })
       );
+      setConsultationId(realId);
+    } catch (error) {
+      console.error("Failed to send message", error);
+    } finally {
       setIsTyping(false);
-    }, 950);
+    }
   };
 
+  if (authLoading) return <div style={{padding: '50px', textAlign: 'center', color: '#fff'}}>Loading Mediguide...</div>;
+
   return (
-    <div className={`app-layout ${activeConversationId ? 'conversation-state' : 'landing-state'}`}>
+    <div className={`app-layout ${activeConsultationId ? 'conversation-state' : 'landing-state'}`}>
       <Sidebar 
         isOpen={isSidebarOpen} 
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        activeId={activeConversationId}
+        activeId={activeConsultationId}
         onSelectConversation={handleSelectConversation}
         conversations={conversations}
       />
       
       <div className="main-content">
-        <TopNav />
+        <TopNav onAddFamily={() => setShowFamilyModal(true)} onLoginClick={() => setShowAuthModal(true)} />
+        
         <div className="content-scrollable flex">
-           
            {/* Center Column */}
            <div className="center-column">
-             {!activeConversationId ? (
+             {!activeConsultationId ? (
                <>
                  <HeroSection />
                  <div className="main-padding">
@@ -135,16 +157,18 @@ const App: React.FC = () => {
                activeConversation && <ChatView conversation={activeConversation} isTyping={isTyping} />
              )}
 
-             <div className={`chat-input-wrapper ${activeConversationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
+             <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
                <ChatInput suggestions={suggestions} onSend={handleSendMessage} />
              </div>
            </div>
 
            {/* Right Panel */}
            <RightHealthPanel />
-
         </div>
       </div>
+
+      {!isAuthenticated && showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {isAuthenticated && showFamilyModal && <FamilySelectorModal onClose={() => setShowFamilyModal(false)} />}
     </div>
   );
 };

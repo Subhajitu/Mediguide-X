@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import type { Conversation } from '../../services/mockData';
+import React, { useEffect, useRef, useState } from 'react';
+import type { Conversation } from '../../types';
 import { HeroLogo } from '../../shared/ui/Logo';
 import { Icon } from '../../shared/ui/Icon';
+import { CarePlanModal } from './CarePlanModal';
 import './ChatView.css';
 
 interface ChatViewProps {
@@ -11,6 +12,7 @@ interface ChatViewProps {
 
 export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = false }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showCarePlan, setShowCarePlan] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -51,10 +53,18 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
   };
 
   return (
-    <div className="chat-view">
-      <div className="chat-header-mobile">
-        <h3>{conversation.title}</h3>
-        <span className="text-muted text-xs">{conversation.date}</span>
+    <div className="chat-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="chat-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eaeaea' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '18px' }}>{conversation.title}</h3>
+          <span className="text-muted text-xs">{conversation.date}</span>
+        </div>
+        <button 
+          onClick={() => setShowCarePlan(true)}
+          style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+        >
+          Generate AI Care Plan
+        </button>
       </div>
       
       <div className="chat-messages" ref={scrollRef}>
@@ -75,19 +85,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
             )}
             
             <div className={`message-bubble ${msg.sender === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
-              {msg.attachments && msg.attachments.length > 0 && (
-                <div className="message-attachments">
-                  {msg.attachments.map(attachment => (
-                    <div key={attachment.name} className={`attachment-pill attachment-${attachment.type}`}>
-                      <Icon name="attach" size={14} />
-                      <div>
-                        <span className="attachment-name">{attachment.name}</span>
-                        <span className="attachment-meta">{attachment.meta}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
               <div className="message-content">
                 {renderText(msg.text)}
               </div>
@@ -109,6 +106,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
           </div>
         )}
       </div>
+
+      {showCarePlan && <CarePlanModal consultationId={conversation.id} onClose={() => setShowCarePlan(false)} />}
     </div>
   );
 };

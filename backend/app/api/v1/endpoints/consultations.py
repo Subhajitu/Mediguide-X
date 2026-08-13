@@ -7,12 +7,15 @@ import datetime
 
 from app.db.session import get_db
 from app.core.security import get_current_user
+from app.core.guardrails import guardrails
 from app.schemas.consultation import ChatMessageRequest, ChatMessageResponse
+from app.schemas.care_plan import CarePlanSchema
 from app.db.models.family_member import FamilyMember
 from app.db.models.consultation import Consultation
-from app.db.models.chat_message import ChatMessage
+from app.db.models.chat_message import ChatMessage, SenderEnum
 from app.services.context_engine import context_engine
 from app.services.bedrock import bedrock_service
+from app.services.care_plan import care_plan_service
 
 router = APIRouter()
 
@@ -26,6 +29,17 @@ async def send_chat_message(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    # 0. Safety Guardrail
+    if not guardrails.is_medical_query(request.message):
+        return ChatMessageResponse(
+            consultation_id=request.consultation_id or uuid.uuid4(),
+            user_message=request.message,
+            ai_message=guardrails.get_redirect_message(),
+            suggestions=["I have a headache", "What are diabetes symptoms?"],
+            disclaimer=get_medical_disclaimer(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat()
+        )
+
     # 1. Verify ownership
     user_id = UUID(current_user["sub"])
     stmt = select(FamilyMember).where(
@@ -46,6 +60,7 @@ async def send_chat_message(
             title=request.message[:50] + "..." if len(request.message) > 50 else request.message
         )
         db.add(new_consultation)
+        await db.flush()
     else:
         # Verify consultation belongs to family member
         stmt = select(Consultation).where(
@@ -60,7 +75,7 @@ async def send_chat_message(
     user_msg = ChatMessage(
         id=user_msg_id,
         consultation_id=consultation_id,
-        sender="user",
+        sender=SenderEnum.user,
         text=request.message
     )
     db.add(user_msg)
@@ -78,14 +93,12 @@ async def send_chat_message(
     ai_msg = ChatMessage(
         id=ai_msg_id,
         consultation_id=consultation_id,
-        sender="ai",
+        sender=SenderEnum.ai,
         text=ai_reply
     )
     db.add(ai_msg)
     await db.commit()
 
-    # In Sprint 3 we will generate dynamic suggestion chips based on the context.
-    # For now, we return default suggestions.
     suggestions = ["Should I see a doctor?", "What are home remedies?", "Explain my recent labs"]
 
     return ChatMessageResponse(
@@ -96,3 +109,49 @@ async def send_chat_message(
         disclaimer=get_medical_disclaimer(),
         timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat()
     )
+
+@router.post("/{consultation_id}/care-plan", response_model=CarePlanSchema)
+async def generate_care_plan(
+    consultation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # 1. Fetch Consultation & Verify Ownership
+    user_id = UUID(current_user["sub"])
+    stmt = select(Consultation).join(FamilyMember).where(
+        Consultation.id == consultation_id,
+        FamilyMember.user_id == user_id
+    )
+    result = await db.execute(stmt)
+    consultation = result.scalar_one_or_none()
+    
+    if not consultation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consultation not found")
+
+    # 2. Build Context and Transcript
+    patient_context = await context_engine.build_patient_context(db, consultation.family_member_id, None)
+    
+    from sqlalchemy import asc
+    stmt_chat = select(ChatMessage).where(
+        ChatMessage.consultation_id == consultation_id
+    ).order_by(asc(ChatMessage.timestamp))
+    result_chat = await db.execute(stmt_chat)
+    chat_messages = result_chat.scalars().all()
+    
+    transcript_lines = []
+    for msg in chat_messages:
+        sender_str = "User" if msg.sender.value == "user" else "AI"
+        transcript_lines.append(f"{sender_str}: {msg.text}")
+    transcript = "\n".join(transcript_lines)
+
+    # 3. Generate structured Care Plan via Nova Pro
+    try:
+        care_plan = await care_plan_service.generate_care_plan(patient_context, transcript)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Failed to generate valid care plan: {str(e)}")
+
+    # 4. Save to database
+    consultation.care_plan_summary = care_plan.model_dump()
+    await db.commit()
+
+    return care_plan
