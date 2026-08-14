@@ -64,17 +64,20 @@ Prepare the production build of the frontend and move it to the web server direc
 # 1. Navigate to the project root
 cd /home/ubuntu/mediguide-x
 
-# 2. Install Node dependencies
+# 2. Create the frontend .env file to point to the production API!
+echo "VITE_API_BASE_URL=/api/v1" > .env
+
+# 3. Install Node dependencies
 npm install
 
-# 3. Build the frontend
+# 4. Build the frontend
 npm run build
 
-# 4. Create the web directory and copy the build files
+# 5. Create the web directory and copy the build files
 sudo mkdir -p /var/www/mediguide/dist
 sudo cp -r dist/* /var/www/mediguide/dist/
 
-# 5. Set correct permissions
+# 6. Set correct permissions
 sudo chown -R www-data:www-data /var/www/mediguide/dist
 ```
 
@@ -97,7 +100,12 @@ pip install -r requirements.txt
 # 4. Create your production .env file
 nano .env
 ```
-*(In the `nano` editor, paste your database connection string, AWS keys, etc. Press `Ctrl+O`, `Enter` to save, and `Ctrl+X` to exit).*
+*(In the `nano` editor, paste your RDS database connection string, AWS keys, etc. Press `Ctrl+O`, `Enter` to save, and `Ctrl+X` to exit).*
+
+```bash
+# 5. Run Database Migrations to create tables in RDS
+alembic upgrade head
+```
 
 ---
 
