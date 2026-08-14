@@ -49,3 +49,4 @@ htmlcov/
 *.njsproj
 *.sln
 *.sw?
+.ai_memory/

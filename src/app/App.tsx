@@ -186,9 +186,11 @@ const App: React.FC = () => {
                </>
              )}
 
-             <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-               <ChatInput suggestions={suggestions} onSend={handleSendMessage} />
-             </div>
+             {activeTab !== 'profile' && (
+               <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
+                 <ChatInput suggestions={suggestions} onSend={handleSendMessage} />
+               </div>
+             )}
            </div>
 
            {/* Right Panel */}

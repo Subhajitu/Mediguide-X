@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '../ui/Icon';
 import { SidebarLogo } from '../ui/SidebarLogo';
 import { type Conversation } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { ComingSoonModal } from '../components/ComingSoonModal';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -24,14 +26,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onTabChange
 }) => {
+  const { isAuthenticated } = useAuth();
+  const [showSettingsComingSoon, setShowSettingsComingSoon] = useState(false);
   
-  const bottomMenuItems = [
-    { id: 'settings', icon: 'settings' as const, label: 'Settings' },
-    { id: 'profile', icon: 'user' as const, label: 'User Profile' },
-  ];
+  // User Profile is completely removed. Settings only shown if logged in.
+  const bottomMenuItems = isAuthenticated ? [
+    { id: 'settings', icon: 'settings' as const, label: 'Settings' }
+  ] : [];
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
+    <>
+      <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       {/* Animated Mesh Background */}
       <div className="sidebar-bg-mesh">
         <div className="sidebar-bg-blur-1"></div>
@@ -43,12 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <SidebarLogo expanded={isOpen} animated={true} />
           {isOpen && (
             <button className="sidebar-toggle-btn" onClick={onToggle}>
-              <Icon name="menu" size={20} />
+              <Icon name="chevron-left" size={20} />
             </button>
           )}
           {!isOpen && (
              <button className="sidebar-toggle-btn mx-auto" onClick={onToggle}>
-               <Icon name="menu" size={20} />
+               <Icon name="chevron-right" size={20} />
              </button>
           )}
         </div>
@@ -118,7 +123,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button 
             key={item.id} 
             className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => onTabChange(item.id)}
+            onClick={() => {
+              if (item.id === 'settings') {
+                setShowSettingsComingSoon(true);
+              } else {
+                onTabChange(item.id);
+              }
+            }}
           >
             <div className="menu-item-icon">
               <Icon name={item.icon} size={20} />
@@ -142,5 +153,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
     </aside>
+    <ComingSoonModal 
+      isOpen={showSettingsComingSoon} 
+      onClose={() => setShowSettingsComingSoon(false)} 
+      featureName="Settings Configuration" 
+    />
+    </>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 
 export type IconName = 
   | 'menu' | 'plus' | 'search' | 'upload' | 'bell' | 'chevron-down' 
+  | 'chevron-left' | 'chevron-right'
   | 'dna' | 'heart' | 'stethoscope' | 'shield' | 'cross' 
   | 'symptom' | 'report' | 'prescription' | 'pill' | 'microscope' | 'calendar'
   | 'arrow-right' | 'attach' | 'mic' | 'scan' | 'send' 
@@ -26,6 +27,10 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, className = '', ...
         return <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />;
       case 'chevron-down':
         return <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />;
+      case 'chevron-left':
+        return <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />;
+      case 'chevron-right':
+        return <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />;
       case 'arrow-right':
         return <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />;
       case 'send':

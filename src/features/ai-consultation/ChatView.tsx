@@ -23,28 +23,53 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
   const renderText = (text: string) => {
     const lines = text.split('\n');
     const nodes: React.ReactNode[] = [];
-    let listItems: string[] = [];
+    let listItems: React.ReactNode[] = [];
 
     const flushList = (key: string) => {
-      if (listItems.length === 0) {
-        return;
-      }
+      if (listItems.length === 0) return;
       nodes.push(
-        <ul key={key} className="message-list">
+        <ul key={key} className="message-list" style={{ marginLeft: '20px', marginBottom: '10px' }}>
           {listItems.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
         </ul>
       );
       listItems = [];
     };
 
+    const parseInlineMarkdown = (line: string, index: number) => {
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={`${index}-${i}`} style={{ color: 'var(--color-text-primary)' }}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+    };
+
     lines.forEach((line, index) => {
-      if (line.trim().startsWith('-')) {
-        listItems.push(line.replace('-', '').trim());
+      let cleanLine = line.trim();
+      
+      if (cleanLine.startsWith('#')) {
+        cleanLine = cleanLine.replace(/^#+\s*/, '');
+        flushList(`list-${index}`);
+        nodes.push(<div key={`h4-${index}`} style={{ fontWeight: 600, marginTop: '12px', marginBottom: '6px' }}>{parseInlineMarkdown(cleanLine, index)}</div>);
         return;
       }
+
+      if (cleanLine.startsWith('- ') || cleanLine.startsWith('* ')) {
+        const itemText = cleanLine.substring(2).trim();
+        listItems.push(parseInlineMarkdown(itemText, index));
+        return;
+      }
+
+      const numMatch = cleanLine.match(/^(\d+)\.\s+(.*)/);
+      if (numMatch) {
+        listItems.push(<span key={`span-${index}`}><strong>{numMatch[1]}.</strong> {parseInlineMarkdown(numMatch[2], index)}</span>);
+        return;
+      }
+
       flushList(`list-${index}`);
-      if (line.trim()) {
-        nodes.push(<p key={`p-${index}`}>{line}</p>);
+      if (cleanLine) {
+        nodes.push(<p key={`p-${index}`} style={{ marginBottom: '8px', lineHeight: 1.5 }}>{parseInlineMarkdown(cleanLine, index)}</p>);
       }
     });
     flushList('list-final');
