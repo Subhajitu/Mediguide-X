@@ -13,3 +13,15 @@ class ChatMessageResponse(BaseModel):
     suggestions: List[str]
     disclaimer: str
     timestamp: str
+
+class MessageItem(BaseModel):
+    id: str
+    sender: str
+    text: str
+    timestamp: str
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: str
+    date: str
+    messages: List[MessageItem]

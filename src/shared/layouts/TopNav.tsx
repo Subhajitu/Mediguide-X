@@ -6,28 +6,38 @@ import { usePatient } from '../../context/PatientContext';
 import './TopNav.css';
 
 const navLinks = [
-  { label: 'Dashboard', icon: 'menu', active: true },
-  { label: 'Medical Reports', icon: 'report' },
-  { label: 'Appointments', icon: 'calendar' },
-  { label: 'Medication', icon: 'pill' },
-  { label: 'Scan & Labs', icon: 'microscope' },
-  { label: 'Health Timeline', icon: 'heart-rate' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'menu' },
+  { id: 'reports', label: 'Medical Reports', icon: 'report' },
+  { id: 'appointments', label: 'Appointments', icon: 'calendar' },
+  { id: 'medication', label: 'Medication', icon: 'pill' },
+  { id: 'scans', label: 'Scan & Labs', icon: 'microscope' },
+  { id: 'timeline', label: 'Health Timeline', icon: 'heart-rate' },
 ];
 
 interface TopNavProps {
   onAddFamily?: () => void;
   onLoginClick?: () => void;
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick }) => {
-  const { user, isAuthenticated, logout } = useAuth();
+export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activeTab, onTabChange }) => {
+  const { user, isAuthenticated } = useAuth();
   const { familyMembers, activeFamilyMember, selectFamilyMember } = usePatient();
 
   return (
     <header className="topnav">
       <nav className="topnav-nav">
         {navLinks.map(link => (
-          <a key={link.label} href="#" className={`nav-link ${link.active ? 'active' : ''}`}>
+          <a 
+            key={link.id} 
+            href={`#${link.id}`}
+            className={`nav-link ${activeTab === link.id ? 'active' : ''}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onTabChange(link.id);
+            }}
+          >
             <Icon name={link.icon as any} size={18} className="nav-icon" />
             <span className="nav-label">{link.label}</span>
           </a>
@@ -58,11 +68,11 @@ export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick }) => 
         </button>
 
         {isAuthenticated ? (
-          <div className="user-profile" onClick={logout} style={{cursor: 'pointer'}} title="Click to logout">
+          <div className="user-profile" onClick={() => onTabChange('profile')} style={{cursor: 'pointer'}} title="Click to view profile">
             <img src={avatar} alt="User Avatar" className="avatar" />
             <div className="user-info">
               <span className="user-name">Hi, {user?.fullName || 'User'}</span>
-              <span className="user-view-profile">Logout</span>
+              <span className="user-view-profile">View Profile</span>
             </div>
           </div>
         ) : (

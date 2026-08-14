@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from app.db.base import Base
@@ -12,3 +13,5 @@ class Consultation(Base):
     title = Column(String(255), nullable=False)
     care_plan_summary = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    messages = relationship("ChatMessage", back_populates="consultation", cascade="all, delete-orphan")

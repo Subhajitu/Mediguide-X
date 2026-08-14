@@ -8,8 +8,10 @@ import datetime
 from app.db.session import get_db
 from app.core.security import get_current_user
 from app.core.guardrails import guardrails
-from app.schemas.consultation import ChatMessageRequest, ChatMessageResponse
+from app.schemas.consultation import ChatMessageRequest, ChatMessageResponse, ConversationResponse, MessageItem
 from app.schemas.care_plan import CarePlanSchema
+from typing import List
+from typing import List
 from app.db.models.family_member import FamilyMember
 from app.db.models.consultation import Consultation
 from app.db.models.chat_message import ChatMessage, SenderEnum
@@ -21,6 +23,62 @@ router = APIRouter()
 
 def get_medical_disclaimer() -> str:
     return "Disclaimer: Mediguide X provides AI-generated informational guidance only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider for medical concerns."
+
+@router.get("/{family_member_id}", response_model=List[ConversationResponse])
+async def get_consultations(
+    family_member_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # 1. Verify ownership
+    user_id = UUID(current_user["sub"])
+    stmt = select(FamilyMember).where(
+        FamilyMember.id == family_member_id,
+        FamilyMember.user_id == user_id
+    )
+    if not (await db.execute(stmt)).scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # 2. Fetch consultations
+    stmt = select(Consultation).where(
+        Consultation.family_member_id == family_member_id
+    ).order_by(Consultation.created_at.desc())
+    
+    result = await db.execute(stmt)
+    consultations = result.scalars().all()
+    
+    consultation_ids = [c.id for c in consultations]
+    messages_by_consultation = {c.id: [] for c in consultations}
+    
+    if consultation_ids:
+        stmt_msgs = select(ChatMessage).where(ChatMessage.consultation_id.in_(consultation_ids))
+        msgs_result = await db.execute(stmt_msgs)
+        all_msgs = msgs_result.scalars().all()
+        for m in all_msgs:
+            messages_by_consultation[m.consultation_id].append(m)
+    
+    response = []
+    for c in consultations:
+        c_messages = messages_by_consultation.get(c.id, [])
+        messages = sorted(c_messages, key=lambda x: x.timestamp or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc))
+        msgs = []
+        for m in messages:
+            msgs.append(MessageItem(
+                id=str(m.id),
+                sender=m.sender.value if hasattr(m.sender, 'value') else str(m.sender),
+                text=m.text,
+                timestamp=m.timestamp.strftime("%I:%M %p") if m.timestamp else "Unknown"
+            ))
+            
+        date_str = c.created_at.strftime("%a, %b %d") if c.created_at else "Today"
+        response.append(ConversationResponse(
+            id=str(c.id),
+            title=c.title or "Consultation",
+            date=date_str,
+            messages=msgs
+        ))
+        
+    return response
 
 @router.post("/{family_member_id}/messages", response_model=ChatMessageResponse)
 async def send_chat_message(

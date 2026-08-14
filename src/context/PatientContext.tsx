@@ -13,7 +13,10 @@ interface PatientContextType {
   isLoading: boolean;
   selectFamilyMember: (id: string) => void;
   addFamilyMember: (data: Partial<FamilyMember>) => Promise<void>;
+  updateFamilyMember: (id: string, data: Partial<FamilyMember>) => Promise<void>;
+  deleteFamilyMember: (id: string) => Promise<void>;
   refreshReports: () => Promise<void>;
+  addReport: (report: MedicalRecordItem) => void;
   setConsultationId: (id: string | null) => void;
 }
 
@@ -66,6 +69,24 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
     setActiveFamilyMember(newMember);
   };
 
+  const updateFamilyMember = async (id: string, data: Partial<FamilyMember>) => {
+    const updatedMember = await familyApi.updateFamilyMember(id, data);
+    setFamilyMembers(prev => prev.map(m => m.id === id ? updatedMember : m));
+    if (activeFamilyMember?.id === id) {
+      setActiveFamilyMember(updatedMember);
+    }
+  };
+
+  const deleteFamilyMember = async (id: string) => {
+    await familyApi.deleteFamilyMember(id);
+    setFamilyMembers(prev => prev.filter(m => m.id !== id));
+    if (activeFamilyMember?.id === id) {
+      setActiveFamilyMember(null);
+      setReports([]);
+      setConsultationId(null);
+    }
+  };
+
   const refreshReports = async () => {
     if (!activeFamilyMember) return;
     try {
@@ -74,6 +95,10 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to fetch reports", error);
     }
+  };
+
+  const addReport = (report: MedicalRecordItem) => {
+    setReports(prev => [report, ...prev]);
   };
 
   // Whenever active member changes, fetch reports
@@ -92,7 +117,10 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       selectFamilyMember,
       addFamilyMember,
+      updateFamilyMember,
+      deleteFamilyMember,
       refreshReports,
+      addReport,
       setConsultationId
     }}>
       {children}

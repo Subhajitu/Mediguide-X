@@ -11,6 +11,8 @@ interface SidebarProps {
   activeId: string | null;
   onSelectConversation: (id: string | null) => void;
   conversations: Conversation[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -18,12 +20,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggle, 
   activeId, 
   onSelectConversation, 
-  conversations 
+  conversations,
+  activeTab,
+  onTabChange
 }) => {
   
   const bottomMenuItems = [
     { id: 'settings', icon: 'settings' as const, label: 'Settings' },
-    { id: 'user', icon: 'user' as const, label: 'User Profile' },
+    { id: 'profile', icon: 'user' as const, label: 'User Profile' },
   ];
 
   return (
@@ -111,7 +115,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-footer">
         {bottomMenuItems.map(item => (
-          <button key={item.id} className="menu-item">
+          <button 
+            key={item.id} 
+            className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
+            onClick={() => onTabChange(item.id)}
+          >
             <div className="menu-item-icon">
               <Icon name={item.icon} size={20} />
             </div>

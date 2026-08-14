@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '../../shared/ui/Button';
 import { Icon } from '../../shared/ui/Icon';
+import { usePatient } from '../../context/PatientContext';
+import { useAuth } from '../../context/AuthContext';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -10,6 +12,9 @@ interface ChatInputProps {
 
 export const ChatInput: React.FC<ChatInputProps> = ({ suggestions = [], onSend }) => {
   const [value, setValue] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addReport, activeFamilyMember } = usePatient();
+  const { isAuthenticated } = useAuth();
 
   const submitMessage = (message: string) => {
     const cleanMessage = message.trim();
@@ -23,6 +28,35 @@ export const ChatInput: React.FC<ChatInputProps> = ({ suggestions = [], onSend }
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     submitMessage(value);
+  };
+
+  const handleTriggerUpload = () => {
+    if (!isAuthenticated) {
+      alert("Please login to upload documents");
+      return;
+    }
+    if (!activeFamilyMember) {
+      alert("Please add or select a family member first.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const newReport = {
+      id: `report-${Date.now()}`,
+      title: file.name,
+      record_type: file.type.includes('pdf') ? 'lab_report' : 'other',
+      record_date: new Date().toISOString().split('T')[0],
+      download_url: URL.createObjectURL(file)
+    };
+
+    addReport(newReport);
+    alert(`Successfully uploaded ${file.name} to Medical Reports.`);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -49,7 +83,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ suggestions = [], onSend }
           />
           
           <div className="chat-actions">
-            <button className="chat-action-btn" type="button" title="Attach medical report">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleFileUpload} 
+              accept=".pdf,image/*" 
+            />
+            
+            <button className="chat-action-btn" type="button" title="Attach medical report" onClick={handleTriggerUpload}>
               <Icon name="attach" size={18} />
               <span className="chat-action-label">Attach File</span>
             </button>
@@ -59,7 +101,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ suggestions = [], onSend }
               <span className="chat-action-label">Voice Input</span>
             </button>
             
-            <button className="chat-action-btn" type="button" title="Scan prescription or lab image">
+            <button className="chat-action-btn" type="button" title="Scan prescription or lab image" onClick={handleTriggerUpload}>
               <Icon name="scan" size={18} />
               <span className="chat-action-label">Scan / Image</span>
             </button>

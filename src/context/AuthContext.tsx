@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<void>;
   logout: () => void;
 }
 
@@ -52,9 +53,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (data: RegisterData) => {
     await authApi.register(data);
-    // After registration, depending on backend, you either login automatically or prompt.
-    // For now, let's login automatically.
     await login({ email: data.email, password: data.password });
+  };
+
+  const updateUser = async (data: Partial<User>) => {
+    // Assuming backend has a PUT /auth/me or similar
+    const updatedUser = await authApi.updateUser(data);
+    setUser(updatedUser);
   };
 
   const logout = () => {
@@ -64,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

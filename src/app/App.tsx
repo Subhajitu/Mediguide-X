@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../shared/layouts/Sidebar';
 import { TopNav } from '../shared/layouts/TopNav';
 import { HeroSection } from '../features/ai-consultation/HeroSection';
-import { QuickActionCards } from '../features/ai-consultation/QuickActionCards';
 import { ChatInput } from '../features/ai-consultation/ChatInput';
 import { ChatView } from '../features/ai-consultation/ChatView';
 import { RightHealthPanel } from '../features/health-metrics/RightHealthPanel';
+import { MedicalReportsView } from '../features/health-metrics/MedicalReportsView';
+import { UserProfileView } from '../features/user/UserProfileView';
 import { AuthModal } from '../shared/components/AuthModal';
 import { FamilySelectorModal } from '../shared/components/FamilySelectorModal';
 import { useAuth } from '../context/AuthContext';
@@ -22,8 +23,20 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFamilyModal, setShowFamilyModal] = useState(false);
+
+  // Load chat history when active family member changes
+  useEffect(() => {
+    if (activeFamilyMember) {
+      consultationApi.getConsultations(activeFamilyMember.id)
+        .then(data => setConversations(data))
+        .catch(err => console.error("Failed to load chat history:", err));
+    } else {
+      setConversations([]);
+    }
+  }, [activeFamilyMember]);
 
   // We keep local state for the active conversation for immediate UI updates
   const activeConversation = conversations.find(c => c.id === activeConsultationId);
@@ -128,33 +141,49 @@ const App: React.FC = () => {
         activeId={activeConsultationId}
         onSelectConversation={handleSelectConversation}
         conversations={conversations}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       
       <div className="main-content">
-        <TopNav onAddFamily={() => setShowFamilyModal(true)} onLoginClick={() => setShowAuthModal(true)} />
+        <TopNav 
+          onAddFamily={() => setShowFamilyModal(true)} 
+          onLoginClick={() => setShowAuthModal(true)} 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
         
         <div className="content-scrollable flex">
            {/* Center Column */}
            <div className="center-column">
-             {!activeConsultationId ? (
-               <>
-                 <HeroSection />
-                 {/* For Later use */}
-                 {/* <div className="main-padding">
-                   <QuickActionCards />
-                 </div> */}
-                 
-                 {/* Disclaimer */}
-                 <div className="disclaimer">
-                   <div className="disclaimer-highlight">
-                     <Icon name="shield" size={14} />
-                     <span>Mediguide X provides AI-generated information for general guidance only.</span>
-                   </div><br />
-                   <span>It is not a substitute for professional medical advice, diagnosis or treatment.</span>
-                 </div>
-               </>
+             {activeTab === 'reports' ? (
+               <MedicalReportsView />
+             ) : activeTab === 'profile' ? (
+               <UserProfileView />
              ) : (
-               activeConversation && <ChatView conversation={activeConversation} isTyping={isTyping} />
+               <>
+                 {!activeConsultationId ? (
+                   <>
+                     <HeroSection />
+                     {/* 
+                     <div className="main-padding">
+                       <QuickActionCards />
+                     </div>
+                     */}
+                     
+                     {/* Disclaimer */}
+                     <div className="disclaimer">
+                       <div className="disclaimer-highlight">
+                         <Icon name="shield" size={14} />
+                         <span>Mediguide X provides AI-generated information for general guidance only.</span>
+                       </div><br />
+                       <span>It is not a substitute for professional medical advice, diagnosis or treatment.</span>
+                     </div>
+                   </>
+                 ) : (
+                   activeConversation && <ChatView conversation={activeConversation} isTyping={isTyping} />
+                 )}
+               </>
              )}
 
              <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>

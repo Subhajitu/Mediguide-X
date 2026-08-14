@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { Card } from '../../shared/ui/Card';
 import { Icon } from '../../shared/ui/Icon';
-import { mockHealthMetrics } from '../../services/mockData';
 import avatar from '../../assets/avatar.jpg';
 import { usePatient } from '../../context/PatientContext';
 import { reportsApi } from '../../services/api/reportsApi';
@@ -66,28 +65,32 @@ export const RightHealthPanel: React.FC = () => {
           
           <div className="metrics-list">
             <Card className="metric-card">
-              <div className="metric-icon-bg bg-red">
-                <Icon name="heart-rate" size={20} className="text-red" />
+              <div className="metric-icon-bg bg-blue">
+                <Icon name="profile" size={20} className="text-blue" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">Heart Rate</div>
+                <div className="metric-label">Profile Status</div>
                 <div className="metric-value">
-                  {mockHealthMetrics.heartRate.value} <span className="metric-unit">{mockHealthMetrics.heartRate.unit}</span>
+                  {activeFamilyMember ? 'Active' : 'No Profile'}
                 </div>
-                <div className="metric-status status-normal">{mockHealthMetrics.heartRate.status}</div>
+                <div className="metric-status status-good">
+                  {activeFamilyMember ? activeFamilyMember.name : 'Select a member'}
+                </div>
               </div>
             </Card>
 
             <Card className="metric-card">
-              <div className="metric-icon-bg bg-blue">
-                <Icon name="health-score" size={20} className="text-blue" />
+              <div className="metric-icon-bg bg-red">
+                <Icon name="heart-rate" size={20} className="text-red" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">Health Score</div>
+                <div className="metric-label">Health Info</div>
                 <div className="metric-value">
-                  {mockHealthMetrics.healthScore.value} <span className="metric-unit">/ {mockHealthMetrics.healthScore.max}</span>
+                  {activeFamilyMember?.blood_group || 'N/A'} <span className="metric-unit">Blood</span>
                 </div>
-                <div className="metric-status status-good">{mockHealthMetrics.healthScore.status}</div>
+                <div className="metric-status status-normal">
+                  {(activeFamilyMember?.medical_conditions?.length || 0)} Conditions
+                </div>
               </div>
             </Card>
           </div>

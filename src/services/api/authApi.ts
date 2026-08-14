@@ -26,5 +26,17 @@ export const authApi = {
       email: response.data.email,
       fullName: response.data.full_name,
     };
+  },
+
+  updateUser: async (data: Partial<User>): Promise<User> => {
+    const response = await apiClient.put('/auth/me', {
+      email: data.email,
+      full_name: data.fullName
+    });
+    return {
+      id: response.data.id,
+      email: response.data.email,
+      fullName: response.data.full_name,
+    };
   }
 };
