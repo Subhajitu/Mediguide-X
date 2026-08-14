@@ -1,0 +1,34 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    
+    # Replace this with your actual domain name (e.g., mediguide.com www.mediguide.com)
+    server_name your-domain.com;
+
+    # Mandatory Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    # Note: Content-Security-Policy can sometimes block inline scripts from React, 
+    # adjust if frontend fails to load, but keeping strict as per Sprint 5 specs.
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:;" always;
+
+    # Serve compiled React frontend
+    location / {
+        root /var/www/mediguide/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API requests to FastAPI
+    location /api/v1/ {
+        proxy_pass http://127.0.0.1:8000/api/v1/;
+        
+        # Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

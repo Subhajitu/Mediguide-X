@@ -1,0 +1,15 @@
+[Unit]
+Description=Mediguide X FastAPI Application
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/mediguide-x/backend
+# Since you are using a t3.micro (2 vCPU, 1GB RAM), --workers 2 is recommended over 4 to save memory
+ExecStart=/home/ubuntu/mediguide-x/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
