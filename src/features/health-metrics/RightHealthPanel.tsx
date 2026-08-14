@@ -66,7 +66,7 @@ export const RightHealthPanel: React.FC = () => {
           <div className="metrics-list">
             <Card className="metric-card">
               <div className="metric-icon-bg bg-blue">
-                <Icon name="profile" size={20} className="text-blue" />
+                <Icon name="user" size={20} className="text-blue" />
               </div>
               <div className="metric-content">
                 <div className="metric-label">Profile Status</div>

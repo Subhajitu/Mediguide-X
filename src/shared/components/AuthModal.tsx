@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { HeroLogo } from '../ui/Logo';
 import { Icon } from '../ui/Icon';
