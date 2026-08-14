@@ -29,7 +29,7 @@ I will handle the application-level code additions and generate the exact config
 Since these tasks involve the AWS Management Console and SSH access to your live server, you will need to execute them manually. I will guide you through each step.
 
 ### Step 1: AWS Infrastructure Setup (AWS Console)
-1. **EC2 Provisioning:** Launch a `t3.medium` EC2 instance with Ubuntu 24.04 LTS in the `ap-south-1` (Mumbai) region.
+1. **EC2 Provisioning:** Launch a `t3.micro` EC2 instance with ubuntu-noble-24.04-amd64 in the us-west-2` (Oregon) region.
 2. **Networking:** Allocate an Elastic IP address and associate it with your EC2 instance. Ensure you have a registered domain name pointing to this IP.
 3. **Security Groups:** Configure inbound rules to allow:
    - Port `80` (HTTP)

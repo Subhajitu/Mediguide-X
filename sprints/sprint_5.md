@@ -6,7 +6,7 @@
 ---
 
 ## 1. Objective & Scope
-Deploy Mediguide X to an AWS EC2 instance in `ap-south-1` (Mumbai), configure Nginx reverse proxy with TLS/HTTPS encryption, establish CloudWatch logging and metrics dashboards, execute security audits, and perform end-to-end acceptance testing across all PRD user journeys.
+Deploy Mediguide X to an AWS EC2 instance in `us-west-2`, configure Nginx reverse proxy with TLS/HTTPS encryption, establish CloudWatch logging and metrics dashboards, execute security audits, and perform end-to-end acceptance testing across all PRD user journeys.
 
 ---
 
