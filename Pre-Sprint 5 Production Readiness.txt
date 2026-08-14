@@ -1,0 +1,486 @@
+# Pre-Sprint 5 Production Readiness Review
+
+We are NOT starting Sprint 5 yet.
+
+Your responsibility is to perform a comprehensive production readiness review of the existing MediGuide AI codebase and resolve all issues before any new feature development.
+
+## Objective
+
+Transform the current project into a clean, stable, maintainable, production-ready foundation.
+
+Do NOT add new features.
+Do NOT begin Sprint 5.
+Do NOT redesign the application.
+Do NOT remove planned product structure.
+
+Focus only on improving quality, reliability, and maintainability.
+
+---
+
+# 1. Complete Codebase Audit
+
+Review the entire project:
+
+- Frontend
+- Backend
+- Database
+- Authentication
+- AWS Integration
+- API Layer
+- Configuration
+- Build Process
+
+Identify and remove:
+
+- Dead code
+- Duplicate code
+- Unused components
+- Unused imports
+- Unused packages
+- Unused helper functions
+- Temporary files
+- Experimental code
+- Legacy code
+- Commented-out code that is no longer needed
+
+---
+
+# 2. Preserve Planned Product Structure
+
+This project follows a planned multi-sprint roadmap.
+
+Do NOT remove UI elements simply because they are not implemented yet.
+
+Preserve:
+
+- Dashboard
+- Medical Reports
+- Appointments
+- Medication
+- Scan & Labs
+- Health Timeline
+
+Also preserve:
+
+- Notification icon
+- User profile/avatar
+- Settings/Profile menu
+- Header layout
+- Sidebar/navigation
+- Overall page structure
+
+If functionality is incomplete:
+
+- keep navigation
+- show Coming Soon
+- use placeholder pages
+
+Do NOT delete planned routes or navigation.
+
+Only remove truly abandoned code.
+
+---
+
+# 3. Remove Mock Data
+
+Search the entire project.
+
+Remove:
+
+- mock JSON
+- dummy patients
+- fake appointments
+- sample prescriptions
+- hardcoded chat messages
+- fake API responses
+- temporary placeholder data
+
+The application should work only with:
+
+- Amazon RDS
+- Amazon Cognito
+- Amazon Bedrock
+- Amazon S3
+
+No fake backend responses should remain.
+
+---
+
+# 4. Console Cleanup
+
+Frontend
+
+Remove:
+
+- console.log
+- console.warn
+- console.error
+- debugger statements
+
+Backend
+
+Remove:
+
+- print()
+- debug output
+- temporary logging
+
+Use proper structured logging only where appropriate.
+
+---
+
+# 5. Build Verification
+
+Verify:
+
+Frontend
+
+- npm install
+- npm run lint
+- npm run build
+
+Backend
+
+- dependency installation
+- FastAPI startup
+- Alembic migrations
+- SQLAlchemy models
+- API startup
+
+Everything must build successfully.
+
+No warnings.
+No errors.
+
+---
+
+# 6. Type Safety
+
+Frontend
+
+Fix:
+
+- TypeScript errors
+- implicit any
+- unsafe casts
+- nullable issues
+
+Backend
+
+Fix:
+
+- Python typing
+- Pydantic models
+- SQLAlchemy typing
+
+---
+
+# 7. API Review
+
+Review every endpoint.
+
+Ensure:
+
+- request validation
+- response validation
+- consistent HTTP status codes
+- standardized error responses
+- no stack traces returned to users
+
+---
+
+# 8. Authentication Review
+
+Validate Cognito integration.
+
+Verify:
+
+- JWT validation
+- login
+- logout
+- protected routes
+- unauthorized handling
+- token expiration
+- refresh flow
+
+No authentication bypasses.
+
+---
+
+# 9. Security Review
+
+Ensure:
+
+No hardcoded
+
+- passwords
+- AWS credentials
+- secrets
+- API keys
+
+Everything must come from environment variables.
+
+Validate:
+
+- CORS
+- request validation
+- file upload validation
+- input sanitization
+
+---
+
+# 10. Database Review
+
+Review:
+
+- SQLAlchemy models
+- relationships
+- indexes
+- constraints
+- naming conventions
+
+Verify Alembic migrations are clean and reproducible.
+
+---
+
+# 11. Frontend Review
+
+Verify:
+
+- routing
+- responsive design
+- loading states
+- empty states
+- error states
+- accessibility
+- navigation consistency
+
+Remove:
+
+- broken links
+- layout issues
+- unused pages
+
+---
+
+# 12. Logo & Branding
+
+Restore the approved MediGuide AI branding.
+
+Ensure:
+
+- correct logo
+- favicon
+- navbar branding
+- loading screen branding
+- responsive sizing
+
+Logo should remain consistent throughout the application.
+
+---
+
+# 13. Styling Review
+
+Review:
+
+- spacing
+- typography
+- colors
+- buttons
+- forms
+- cards
+- icons
+- hover effects
+- transitions
+
+Maintain the approved design language.
+
+Do not redesign the UI.
+
+---
+
+# 14. Dependency Cleanup
+
+Remove unused:
+
+Frontend
+
+- npm packages
+
+Backend
+
+- Python packages
+
+Update lock files if necessary.
+
+---
+
+# 15. Environment Configuration
+
+Validate:
+
+Frontend
+
+- .env.example
+
+Backend
+
+- .env.example
+
+Ensure:
+
+- no secrets committed
+- all required variables documented
+- configuration works in development and production
+
+---
+
+# 16. Folder Structure
+
+Maintain a clean architecture.
+
+Frontend
+
+```
+src/
+components/
+pages/
+layouts/
+hooks/
+services/
+contexts/
+types/
+utils/
+assets/
+```
+
+Backend
+
+```
+app/
+api/
+core/
+models/
+schemas/
+services/
+repositories/
+utils/
+middleware/
+```
+
+---
+
+# 17. AWS Integration Review
+
+Verify integrations are production ready:
+
+- Amazon Cognito
+- Amazon Bedrock
+- Amazon S3
+- Amazon RDS
+- EC2 deployment configuration
+
+Ensure:
+
+- environment variables are correct
+- clients initialize correctly
+- error handling exists
+- retries/timeouts are reasonable
+
+---
+
+# 18. Deployment Readiness
+
+Verify:
+
+- production configuration
+- Docker (if applicable)
+- Nginx configuration (if applicable)
+- static assets build correctly
+- FastAPI runs successfully
+- React production build works
+- environment switching works
+
+---
+
+# 19. Final Production Checklist
+
+Verify all of the following:
+
+✅ No mock data
+
+✅ No fake APIs
+
+✅ No debug code
+
+✅ No console logs
+
+✅ No unused code
+
+✅ No build errors
+
+✅ No lint errors
+
+✅ No TypeScript errors
+
+✅ No Python errors
+
+✅ Clean architecture
+
+✅ Authentication working
+
+✅ Database working
+
+✅ Bedrock integration ready
+
+✅ Cognito ready
+
+✅ S3 ready
+
+✅ RDS ready
+
+✅ Production environment variables configured
+
+✅ Logo fixed
+
+✅ Branding consistent
+
+✅ Planned navigation preserved
+
+✅ Placeholder pages retained for future sprints
+
+---
+
+# 20. Deliverables
+
+Before modifying anything, produce a report containing:
+
+## Critical Issues
+Items blocking production.
+
+## High Priority Issues
+Items that should be fixed before Sprint 5.
+
+## Medium Priority Issues
+Code quality improvements.
+
+## Minor Improvements
+Optional cleanup.
+
+## Files To Modify
+List every file that will change.
+
+## Estimated Time
+Estimated cleanup effort.
+
+Do not begin modifications until the report is complete.
+
+After approval:
+
+- implement every fix
+- verify the application builds successfully
+- verify there are no runtime errors
+- verify there are no console errors
+- verify the application is production ready
+
+Only after all checks pass should Sprint 5 begin.

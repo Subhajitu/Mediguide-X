@@ -26,28 +26,21 @@ export const HeroSection: React.FC = () => {
       </div>
 
       <div className="hero-content">
-        <HeroLogo className="mb-6 animate-pulse-glow" />
+        <HeroLogo className="animate-pulse-glow" style={{ marginBottom: '24px' }} />
         
-        <h1 className="hero-title">
+        <h2 className="hero-title" style={{ marginBottom: '30px' }}>
           Welcome to Mediguide <span className="text-accent font-light">X</span>
-        </h1>
+        </h2>
         
-        <h2 className="hero-subtitle">Your AI Healthcare Companion</h2>
-        
-        <p className="hero-description">
-          I'm here to understand your health, analyze reports, explain prescriptions, and guide you with trusted medical insights.
-        </p>
-        
-        <div className="trust-indicator">
-          <Icon name="shield" size={16} className="text-accent" />
+        <div className="trust-indicator" style={{ marginBottom: '25px' }}>
+          <Icon name="shield" size={16} style={{ color: '#059669' }} />
           <span>Your Health. Our Priority.</span>
         </div>
 
-        <div className="hero-signal-row" aria-label="Platform signals">
-          <span>Clinical context</span>
-          <span>Report aware</span>
-          <span>Follow-up first</span>
-        </div>
+        <p className="hero-subtitle-text" style={{ marginBottom: '30px' }}>
+          I'm here to understand your health, analyze reports, explain prescriptions, and guide you with trusted medical insights.
+        </p>
+
       </div>
     </div>
   );

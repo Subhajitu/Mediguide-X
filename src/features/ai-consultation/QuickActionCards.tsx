@@ -18,12 +18,14 @@ export const QuickActionCards: React.FC = () => {
       {actionCards.map(card => (
         <Card key={card.id} variant="interactive" className="action-card">
           <div className="action-icon-wrapper">
-            <Icon name={card.icon as any} size={28} className="text-accent" />
+            <Icon name={card.icon as any} size={24} style={{ color: '#059669' }} />
           </div>
-          <h3 className="action-title">{card.title}</h3>
-          <p className="action-desc">{card.desc}</p>
+          <div className="action-text-stack">
+            <h3 className="action-title">{card.title}</h3>
+            <p className="action-desc">{card.desc}</p>
+          </div>
           <div className="action-arrow">
-            <Icon name="arrow-right" size={16} className="text-accent" />
+            <Icon name="arrow-right" size={18} style={{ color: '#059669' }} />
           </div>
         </Card>
       ))}

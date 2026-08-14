@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePatient } from '../context/PatientContext';
 import { consultationApi } from '../services/api/consultationApi';
 import type { Conversation, Message } from '../types';
+import { Icon } from '../shared/ui/Icon';
 import './App.css';
 
 const App: React.FC = () => {
@@ -138,19 +139,18 @@ const App: React.FC = () => {
              {!activeConsultationId ? (
                <>
                  <HeroSection />
-                 <div className="main-padding">
+                 {/* For Later use */}
+                 {/* <div className="main-padding">
                    <QuickActionCards />
-                 </div>
+                 </div> */}
                  
                  {/* Disclaimer */}
                  <div className="disclaimer">
-                   <span className="text-accent">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 14, height: 14, display: 'inline', marginRight: 4, verticalAlign: 'text-bottom'}}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                     </svg>
-                     Mediguide X provides AI-generated information for general guidance only.
-                   </span><br />
-                   It is not a substitute for professional medical advice, diagnosis or treatment.
+                   <div className="disclaimer-highlight">
+                     <Icon name="shield" size={14} />
+                     <span>Mediguide X provides AI-generated information for general guidance only.</span>
+                   </div><br />
+                   <span>It is not a substitute for professional medical advice, diagnosis or treatment.</span>
                  </div>
                </>
              ) : (

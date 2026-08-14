@@ -5,7 +5,7 @@ export type IconName =
   | 'dna' | 'heart' | 'stethoscope' | 'shield' | 'cross' 
   | 'symptom' | 'report' | 'prescription' | 'pill' | 'microscope' | 'calendar'
   | 'arrow-right' | 'attach' | 'mic' | 'scan' | 'send' 
-  | 'heart-rate' | 'blood-pressure' | 'health-score' | 'add-record' | 'reminder' | 'insurance' | 'emergency' | 'chat';
+  | 'heart-rate' | 'blood-pressure' | 'health-score' | 'add-record' | 'reminder' | 'insurance' | 'emergency' | 'chat' | 'settings' | 'user';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -81,6 +81,10 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, className = '', ...
         return <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3zm-3 9l2 2 4-5" />;
       case 'emergency':
         return <path strokeLinecap="round" strokeLinejoin="round" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />;
+      case 'settings':
+        return <><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" /></>;
+      case 'user':
+        return <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />;
       default:
         // Generic circle as fallback
         return <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round" />;

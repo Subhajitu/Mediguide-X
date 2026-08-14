@@ -1,0 +1,31 @@
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.logo-wrapper:hover {
+  transform: rotate(1deg);
+}
+
+.logo-text {
+  font-family: 'Inter', 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #0F172A;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.logo-text-large {
+  font-size: 32px;
+}
+
+.logo-text-x {
+  background: linear-gradient(to bottom, #22C55E, #0F766E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

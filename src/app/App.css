@@ -30,7 +30,7 @@
   flex-direction: column;
   min-width: 0;
   position: relative;
-  padding-bottom: 120px; /* Space for fixed chat input */
+  padding-bottom: 140px; /* Space for fixed chat input and gaps */
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(248, 250, 252, 0.95)),
     var(--color-background);
@@ -51,7 +51,7 @@
 
 .main-padding {
   padding: 0 var(--spacing-8);
-  margin-top: -40px; /* Overlap hero a bit */
+  margin-top: 0;
   z-index: 2;
   position: relative;
   animation: fadeIn 0.4s ease-out;
@@ -59,7 +59,7 @@
 
 .chat-input-wrapper {
   position: fixed;
-  bottom: var(--spacing-8);
+  bottom: 48px; /* 48px from bottom */
   left: 280px; /* Sidebar width */
   right: 360px; /* Right panel width */
   display: flex;
@@ -86,12 +86,21 @@
 
 .disclaimer {
   text-align: center;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  margin-top: var(--spacing-10);
-  margin-bottom: var(--spacing-6);
+  font-size: 13px;
+  color: #64748B;
+  margin: 32px auto 40px auto; /* 32px gap from feature cards, 24px from chat box */
   padding: 0 var(--spacing-8);
+  max-width: 760px;
+  line-height: 20px;
   animation: fadeIn 0.5s ease-out;
+}
+
+.disclaimer-highlight {
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .landing-state .main-padding,
