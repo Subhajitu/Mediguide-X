@@ -111,6 +111,19 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
             
             <div className={`message-bubble ${msg.sender === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
               <div className="message-content">
+                {msg.sender === 'user' && msg.documentS3Key && (
+                  <div className="message-attachments">
+                    <div className="attachment-pill">
+                      <Icon name="attach" size={14} />
+                      <div>
+                        <span className="attachment-name">
+                          {msg.documentS3Key.split('/').pop()?.split('?')[0] ?? 'Document'}
+                        </span>
+                        <span className="attachment-meta">Medical document</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {renderText(msg.text)}
               </div>
               <div className="message-meta">

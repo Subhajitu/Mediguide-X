@@ -1,0 +1,39 @@
+# ============================================================
+# Mediguide-X Kiro Ignore Rules
+# ============================================================
+
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Private credentials
+credentials/
+secrets/
+private/
+
+# Certificates / private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Database dumps / potentially sensitive data
+*.sql
+*.dump
+*.bak
+
+# Local logs
+*.log
+
+# Build artifacts
+node_modules/
+dist/
+build/
+__pycache__/
+.pytest_cache/
+
+# Local runtime/cache
+.venv/
+venv/

@@ -15,5 +15,9 @@ export const reportsApi = {
   triggerAnalysis: async (recordId: string): Promise<MedicalRecordItem> => {
     const response = await apiClient.post<MedicalRecordItem>(`/reports/${recordId}/analyze`);
     return response.data;
-  }
+  },
+
+  deleteRecord: async (recordId: string): Promise<void> => {
+    await apiClient.delete(`/reports/${recordId}`);
+  },
 };

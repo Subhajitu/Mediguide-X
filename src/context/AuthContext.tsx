@@ -11,6 +11,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   logout: () => void;
+  refreshAccessToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +20,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Defined early so it can be referenced by loadUser and the event listener
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken'); // security rule: refresh_token lives in sessionStorage
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   const loadUser = async () => {
     const token = localStorage.getItem('accessToken');
@@ -48,6 +57,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (credentials: LoginCredentials) => {
     const response = await authApi.login(credentials);
     localStorage.setItem('accessToken', response.access_token);
+    // Store refresh token in sessionStorage — NEVER in localStorage (security rule)
+    if (response.refresh_token) {
+      sessionStorage.setItem('refreshToken', response.refresh_token);
+    }
     await loadUser();
   };
 
@@ -57,19 +70,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUser = async (data: Partial<User>) => {
-    // Assuming backend has a PUT /auth/me or similar
     const updatedUser = await authApi.updateUser(data);
     setUser(updatedUser);
   };
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    setUser(null);
-    setIsAuthenticated(false);
+  const refreshAccessToken = async (): Promise<boolean> => {
+    const refreshToken = sessionStorage.getItem('refreshToken');
+    if (!refreshToken) return false;
+    try {
+      const response = await authApi.refresh(refreshToken);
+      localStorage.setItem('accessToken', response.access_token);
+      return true;
+    } catch {
+      logout();
+      return false;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, updateUser, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, updateUser, logout, refreshAccessToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -134,3 +134,29 @@
 .report-action-btn:hover {
   background-color: #ECFDF5;
 }
+
+.report-action-btn--delete {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--color-error);
+  border-color: var(--color-error-light);
+}
+
+.report-action-btn--delete:hover {
+  background-color: var(--color-error-light);
+}
+
+.report-action-btn--delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reports-error {
+  color: var(--color-error);
+  background-color: var(--color-error-light);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-4);
+}

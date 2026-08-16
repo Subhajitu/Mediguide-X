@@ -5,6 +5,10 @@ from typing import Optional, List
 class ChatMessageRequest(BaseModel):
     consultation_id: Optional[UUID] = None
     message: str = Field(..., min_length=1, max_length=2000)
+    document_s3_key: Optional[str] = Field(
+        None,
+        description="S3 key of a previously uploaded medical document to analyze in this message"
+    )
 
 class ChatMessageResponse(BaseModel):
     consultation_id: UUID
@@ -19,6 +23,7 @@ class MessageItem(BaseModel):
     sender: str
     text: str
     timestamp: str
+    document_s3_key: Optional[str] = None
 
 class ConversationResponse(BaseModel):
     id: str

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from uuid import UUID
 import uuid
 import datetime
+import asyncio
 
 from app.db.session import get_db
 from app.core.security import get_current_user
@@ -11,13 +12,16 @@ from app.core.guardrails import guardrails
 from app.schemas.consultation import ChatMessageRequest, ChatMessageResponse, ConversationResponse, MessageItem
 from app.schemas.care_plan import CarePlanSchema
 from typing import List
-from typing import List
+from app.core.limiter import limiter
+from app.core.config import settings
 from app.db.models.family_member import FamilyMember
 from app.db.models.consultation import Consultation
 from app.db.models.chat_message import ChatMessage, SenderEnum
+from app.db.models.medical_record import MedicalRecord
 from app.services.context_engine import context_engine
 from app.services.bedrock import bedrock_service
 from app.services.care_plan import care_plan_service
+from app.services.s3 import s3_service
 
 router = APIRouter()
 
@@ -67,7 +71,8 @@ async def get_consultations(
                 id=str(m.id),
                 sender=m.sender.value if hasattr(m.sender, 'value') else str(m.sender),
                 text=m.text,
-                timestamp=m.timestamp.strftime("%I:%M %p") if m.timestamp else "Unknown"
+                timestamp=m.timestamp.strftime("%I:%M %p") if m.timestamp else "Unknown",
+                document_s3_key=m.document_s3_key,
             ))
             
         date_str = c.created_at.strftime("%a, %b %d") if c.created_at else "Today"
@@ -81,17 +86,19 @@ async def get_consultations(
     return response
 
 @router.post("/{family_member_id}/messages", response_model=ChatMessageResponse)
+@limiter.limit("30/minute")
 async def send_chat_message(
+    request: Request,
     family_member_id: UUID,
-    request: ChatMessageRequest,
+    body: ChatMessageRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     # 0. Safety Guardrail
-    if not guardrails.is_medical_query(request.message):
+    if not guardrails.is_medical_query(body.message):
         return ChatMessageResponse(
-            consultation_id=request.consultation_id or uuid.uuid4(),
-            user_message=request.message,
+            consultation_id=body.consultation_id or uuid.uuid4(),
+            user_message=body.message,
             ai_message=guardrails.get_redirect_message(),
             suggestions=["I have a headache", "What are diabetes symptoms?"],
             disclaimer=get_medical_disclaimer(),
@@ -109,13 +116,13 @@ async def send_chat_message(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     # 2. Get or Create Consultation
-    consultation_id = request.consultation_id
+    consultation_id = body.consultation_id
     if not consultation_id:
         consultation_id = uuid.uuid4()
         new_consultation = Consultation(
             id=consultation_id,
             family_member_id=family_member_id,
-            title=request.message[:50] + "..." if len(request.message) > 50 else request.message
+            title=body.message[:50] + "..." if len(body.message) > 50 else body.message
         )
         db.add(new_consultation)
         await db.flush()
@@ -128,40 +135,76 @@ async def send_chat_message(
         if not (await db.execute(stmt)).scalar_one_or_none():
              raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consultation not found")
 
-    # 3. Save User Message
+    # 3. Fetch conversation history BEFORE saving the new user message
+    # (we don't want the current message included in its own history)
+    history = await context_engine.get_conversation_history(
+        db, consultation_id, history_turns=settings.AI_HISTORY_TURNS
+    )
+
+    # 4. Save User Message
     user_msg_id = uuid.uuid4()
     user_msg = ChatMessage(
         id=user_msg_id,
         consultation_id=consultation_id,
         sender=SenderEnum.user,
-        text=request.message
+        text=body.message,
+        document_s3_key=body.document_s3_key,
+        timestamp=datetime.datetime.now(datetime.timezone.utc),
     )
     db.add(user_msg)
-    await db.commit() # commit so context engine can see it
+    await db.commit()
 
-    # 4. Build Context and call Nova Lite
+    # 5. Build patient context and call appropriate Nova model
     try:
-        patient_context = await context_engine.build_patient_context(db, family_member_id, consultation_id)
-        ai_reply = await bedrock_service.invoke_nova_lite_chat(patient_context, request.message)
+        patient_context = await context_engine.build_patient_context(db, family_member_id)
+
+        if body.document_s3_key:
+            # Validate that the s3_key belongs to a record owned by this user's family member
+            stmt_rec = select(MedicalRecord).join(FamilyMember).where(
+                MedicalRecord.s3_key == body.document_s3_key,
+                FamilyMember.user_id == user_id
+            )
+            rec_result = await db.execute(stmt_rec)
+            if not rec_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied to the specified document"
+                )
+
+            # Fetch document bytes from S3
+            loop = asyncio.get_event_loop()
+            document_bytes = await loop.run_in_executor(
+                None, s3_service._get_object_bytes, body.document_s3_key
+            )
+            filename = body.document_s3_key.split('/')[-1]
+
+            ai_reply, suggestions = await bedrock_service.invoke_nova_pro_with_document(
+                patient_context, history, body.message, document_bytes, filename
+            )
+        else:
+            ai_reply, suggestions = await bedrock_service.invoke_nova_lite_chat_with_history(
+                patient_context, history, body.message
+            )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI Service Error")
 
-    # 5. Save AI Message
+    # 6. Save AI Message
     ai_msg_id = uuid.uuid4()
     ai_msg = ChatMessage(
         id=ai_msg_id,
         consultation_id=consultation_id,
         sender=SenderEnum.ai,
-        text=ai_reply
+        text=ai_reply,
+        timestamp=datetime.datetime.now(datetime.timezone.utc),
     )
     db.add(ai_msg)
     await db.commit()
 
-    suggestions = ["Should I see a doctor?", "What are home remedies?", "Explain my recent labs"]
-
     return ChatMessageResponse(
         consultation_id=consultation_id,
-        user_message=request.message,
+        user_message=body.message,
         ai_message=ai_reply,
         suggestions=suggestions,
         disclaimer=get_medical_disclaimer(),
@@ -169,7 +212,9 @@ async def send_chat_message(
     )
 
 @router.post("/{consultation_id}/care-plan", response_model=CarePlanSchema)
+@limiter.limit("5/minute")
 async def generate_care_plan(
+    request: Request,
     consultation_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -187,7 +232,7 @@ async def generate_care_plan(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consultation not found")
 
     # 2. Build Context and Transcript
-    patient_context = await context_engine.build_patient_context(db, consultation.family_member_id, None)
+    patient_context = await context_engine.build_patient_context(db, consultation.family_member_id)
     
     from sqlalchemy import asc
     stmt_chat = select(ChatMessage).where(

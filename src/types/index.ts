@@ -17,7 +17,10 @@ export interface RegisterData {
 
 export interface AuthResponse {
   access_token: string;
+  id_token: string;
+  refresh_token: string;
   token_type: string;
+  expires_in: number;
 }
 
 export interface FamilyMember {
@@ -64,6 +67,7 @@ export interface ReportListResponse {
 export interface ChatMessageRequest {
   consultation_id?: string | null;
   message: string;
+  document_s3_key?: string | null;
 }
 
 export interface ChatMessageResponse {
@@ -90,6 +94,7 @@ export interface Message {
   text: string;
   timestamp: string;
   suggestions?: string[];
+  documentS3Key?: string;
   attachments?: { name: string; type: string; meta: string }[];
 }
 

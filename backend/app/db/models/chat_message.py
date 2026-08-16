@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, DateTime, ForeignKey, Enum as SQLEnum, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Enum as SQLEnum, Text, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
@@ -19,5 +19,6 @@ class ChatMessage(Base):
     text = Column(Text, nullable=False)
     structured_json = Column(JSONB, nullable=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    document_s3_key = Column(String(512), nullable=True)
 
     consultation = relationship("Consultation", back_populates="messages")

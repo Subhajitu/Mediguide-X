@@ -30,6 +30,7 @@ __pycache__/
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
 
 # Testing & Linting Caches
 .pytest_cache/
@@ -50,3 +51,5 @@ htmlcov/
 *.sln
 *.sw?
 .ai_memory/
+.kiro/
+Prompts/

@@ -22,9 +22,10 @@ interface TopNavProps {
   onLoginClick?: () => void;
   activeTab: string;
   onTabChange: (tabId: string) => void;
+  onMenuClick?: () => void; // opens mobile sidebar drawer
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activeTab, onTabChange }) => {
+export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activeTab, onTabChange, onMenuClick }) => {
   const { user, isAuthenticated } = useAuth();
   const { familyMembers, activeFamilyMember, selectFamilyMember } = usePatient();
   const [comingSoonFeature, setComingSoonFeature] = useState<string | null>(null);
@@ -37,14 +38,22 @@ export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activ
   return (
     <>
       <header className="topnav">
+        {/* Hamburger — visible only on mobile (≤720px), opens the sidebar drawer */}
+        <button
+          className="topnav-menu-btn"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+        >
+          <Icon name="menu" size={22} />
+        </button>
+
         <nav className="topnav-nav">
           {visibleLinks.map(link => (
-            <a 
-              key={link.id} 
-              href={`#${link.id}`}
+            <button
+              key={link.id}
+              type="button"
               className={`nav-link ${activeTab === link.id ? 'active' : ''}`}
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={() => {
                 if (comingSoonTabs.includes(link.id)) {
                   setComingSoonFeature(link.label);
                 } else {
@@ -54,7 +63,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activ
             >
               <Icon name={link.icon as any} size={18} className="nav-icon" />
               <span className="nav-label">{link.label}</span>
-            </a>
+            </button>
           ))}
         </nav>
 
@@ -76,9 +85,8 @@ export const TopNav: React.FC<TopNavProps> = ({ onAddFamily, onLoginClick, activ
             </div>
           )}
 
-          <button className="notification-btn">
+          <button className="notification-btn" aria-label="Notifications">
             <Icon name="bell" size={20} />
-            <span className="badge">3</span>
           </button>
 
           {isAuthenticated ? (

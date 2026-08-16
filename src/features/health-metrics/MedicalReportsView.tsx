@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePatient } from '../../context/PatientContext';
 import { Icon } from '../../shared/ui/Icon';
+import { reportsApi } from '../../services/api/reportsApi';
 import './MedicalReportsView.css';
 
 export const MedicalReportsView: React.FC = () => {
-  const { reports, activeFamilyMember } = usePatient();
+  const { reports, activeFamilyMember, refreshReports } = usePatient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async (recordId: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeletingId(recordId);
+    setError(null);
+    try {
+      await reportsApi.deleteRecord(recordId);
+      await refreshReports();
+    } catch {
+      setError('Failed to delete record. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (!activeFamilyMember) {
     return (
@@ -22,6 +39,8 @@ export const MedicalReportsView: React.FC = () => {
         <h2>Medical Reports for {activeFamilyMember.name}</h2>
         <p>View and manage all uploaded documents, prescriptions, and lab reports.</p>
       </div>
+
+      {error && <p className="reports-error" role="alert">{error}</p>}
 
       {reports.length === 0 ? (
         <div className="reports-empty-state">
@@ -48,10 +67,26 @@ export const MedicalReportsView: React.FC = () => {
                 </div>
               </div>
               <div className="report-actions">
-                <a href={report.download_url} target="_blank" rel="noopener noreferrer" className="report-action-btn" title="View Document">
+                <a
+                  href={report.download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="report-action-btn"
+                  title="View Document"
+                >
                   <Icon name="arrow-right" size={16} />
                   <span>View</span>
                 </a>
+                <button
+                  className="report-action-btn report-action-btn--delete"
+                  onClick={() => handleDelete(report.id, report.title)}
+                  disabled={deletingId === report.id}
+                  aria-label={`Delete ${report.title}`}
+                  title="Delete record"
+                >
+                  <Icon name="cross" size={16} />
+                  <span>{deletingId === report.id ? 'Deleting…' : 'Delete'}</span>
+                </button>
               </div>
             </div>
           ))}

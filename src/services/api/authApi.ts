@@ -38,5 +38,10 @@ export const authApi = {
       email: response.data.email,
       fullName: response.data.full_name,
     };
-  }
+  },
+
+  refresh: async (refreshToken: string): Promise<{ access_token: string; id_token: string; expires_in: number }> => {
+    const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
+    return response.data;
+  },
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from '../shared/layouts/Sidebar';
 import { TopNav } from '../shared/layouts/TopNav';
 import { HeroSection } from '../features/ai-consultation/HeroSection';
@@ -19,11 +20,21 @@ import './App.css';
 const App: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { activeFamilyMember, activeConsultationId, setConsultationId } = usePatient();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive active tab from URL — no local state needed
+  const activeTab = location.pathname === '/reports' ? 'reports'
+                  : location.pathname === '/profile' ? 'profile'
+                  : 'dashboard';
+
+  const handleTabChange = (tabId: string) => {
+    navigate(tabId === 'dashboard' ? '/' : `/${tabId}`);
+  };
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFamilyModal, setShowFamilyModal] = useState(false);
 
@@ -49,9 +60,9 @@ const App: React.FC = () => {
     setConsultationId(id);
   };
 
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, documentS3Key?: string) => {
     const cleanText = text.trim();
-    if (!cleanText || isTyping) return;
+    if ((!cleanText && !documentS3Key) || isTyping) return;
 
     if (!isAuthenticated) {
       setShowAuthModal(true);
@@ -66,8 +77,9 @@ const App: React.FC = () => {
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: cleanText,
+      text: cleanText || 'Please analyze this document.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      documentS3Key: documentS3Key,
     };
 
     let targetId = activeConsultationId;
@@ -97,7 +109,8 @@ const App: React.FC = () => {
       const response = await consultationApi.sendMessage(activeFamilyMember.id, {
         // If it's a temp ID, we pass null to create a new consultation in DB
         consultation_id: targetId?.startsWith('temp') ? null : targetId,
-        message: cleanText
+        message: cleanText || 'Please analyze this document.',
+        document_s3_key: documentS3Key ?? null,
       });
 
       const aiMessage: Message = {
@@ -142,53 +155,55 @@ const App: React.FC = () => {
         onSelectConversation={handleSelectConversation}
         conversations={conversations}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
       
       <div className="main-content">
-        <TopNav 
-          onAddFamily={() => setShowFamilyModal(true)} 
-          onLoginClick={() => setShowAuthModal(true)} 
+        <TopNav
+          onAddFamily={() => setShowFamilyModal(true)}
+          onLoginClick={() => setShowAuthModal(true)}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
+          onMenuClick={() => setIsSidebarOpen(true)}
         />
         
         <div className="content-scrollable flex">
            {/* Center Column */}
            <div className="center-column">
-             {activeTab === 'reports' ? (
-               <MedicalReportsView />
-             ) : activeTab === 'profile' ? (
-               <UserProfileView />
-             ) : (
-               <>
-                 {!activeConsultationId ? (
-                   <>
-                     <HeroSection />
-                     {/* 
-                     <div className="main-padding">
-                       <QuickActionCards />
-                     </div>
-                     */}
-                     
-                     {/* Disclaimer */}
-                     <div className="disclaimer">
-                       <div className="disclaimer-highlight">
-                         <Icon name="shield" size={14} />
-                         <span>Mediguide X provides AI-generated information for general guidance only.</span>
-                       </div><br />
-                       <span>It is not a substitute for professional medical advice, diagnosis or treatment.</span>
-                     </div>
-                   </>
-                 ) : (
-                   activeConversation && <ChatView conversation={activeConversation} isTyping={isTyping} />
-                 )}
-               </>
-             )}
+             <Routes>
+               <Route path="/reports" element={<MedicalReportsView />} />
+               <Route path="/profile" element={<UserProfileView />} />
+               <Route path="/" element={
+                 <>
+                   {!activeConsultationId ? (
+                     <>
+                       <HeroSection />
+                       {/* 
+                       <div className="main-padding">
+                         <QuickActionCards />
+                       </div>
+                       */}
+                       
+                       {/* Disclaimer */}
+                       <div className="disclaimer">
+                         <div className="disclaimer-highlight">
+                           <Icon name="shield" size={14} />
+                           <span>Mediguide X provides AI-generated information for general guidance only.</span>
+                         </div><br />
+                         <span>It is not a substitute for professional medical advice, diagnosis or treatment.</span>
+                       </div>
+                     </>
+                   ) : (
+                     activeConversation && <ChatView conversation={activeConversation} isTyping={isTyping} />
+                   )}
+                 </>
+               } />
+               <Route path="*" element={<Navigate to="/" replace />} />
+             </Routes>
 
-             {activeTab !== 'profile' && (
+             {location.pathname !== '/profile' && (
                <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-                 <ChatInput suggestions={suggestions} onSend={handleSendMessage} />
+                 <ChatInput suggestions={suggestions} onSend={handleSendMessage} familyMemberId={activeFamilyMember?.id} />
                </div>
              )}
            </div>

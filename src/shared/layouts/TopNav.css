@@ -78,23 +78,6 @@
   transform: translateY(-1px);
 }
 
-.badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background-color: var(--color-primary);
-  color: white;
-  font-size: 10px;
-  font-weight: var(--font-weight-bold);
-  height: 16px;
-  min-width: 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--color-surface);
-}
-
 .user-profile {
   display: flex;
   align-items: center;
@@ -168,4 +151,31 @@
 .user-view-profile {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+/* ============================================================
+   Mobile hamburger — opens the sidebar drawer on ≤720px
+   ============================================================ */
+
+.topnav-menu-btn {
+  display: none; /* hidden on desktop */
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.topnav-menu-btn:hover {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+@media (max-width: 720px) {
+  .topnav-menu-btn {
+    display: flex;
+  }
 }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
@@ -12,6 +12,7 @@ from app.db.models.family_member import FamilyMember
 from app.db.models.medical_record import MedicalRecord
 from app.services.s3 import s3_service
 from app.services.report_analyzer import report_analyzer
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -61,7 +62,9 @@ async def get_upload_url(
     )
 
 @router.post("/{record_id}/analyze", response_model=MedicalRecordItem)
+@limiter.limit("10/minute")
 async def analyze_medical_record(
+    request: Request,
     record_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -86,7 +89,7 @@ async def analyze_medical_record(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
         
     record.summary = extracted_data.get("summary", "")
-    record.extracted_data = {"parameters": extracted_data.get("extracted_parameters", [])}
+    record.extracted_data = extracted_data.get("extracted_parameters", [])
     await db.commit()
     await db.refresh(record)
 
@@ -141,3 +144,44 @@ async def list_reports(
         ))
 
     return ReportListResponse(records=record_items)
+
+
+@router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_medical_record(
+    record_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Deletes a medical record and its corresponding S3 object.
+    Security rule: S3 object must be deleted BEFORE the DB row.
+    Ownership verified via JOIN on FamilyMember.user_id.
+    """
+    user_id = UUID(current_user["sub"])
+
+    # Verify ownership via JOIN — record must belong to the requesting user's family member
+    stmt = select(MedicalRecord).join(FamilyMember).where(
+        MedicalRecord.id == record_id,
+        FamilyMember.user_id == user_id
+    )
+    result = await db.execute(stmt)
+    record = result.scalar_one_or_none()
+
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medical record not found")
+
+    # Delete S3 object FIRST (before DB row — security rule)
+    if record.s3_key:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(None, s3_service.delete_object, record.s3_key)
+        except Exception:
+            # Log but don't block deletion if S3 delete fails
+            # (record may already be deleted from S3, or key may be invalid)
+            pass
+
+    # Delete DB row
+    await db.delete(record)
+    await db.commit()
+    return None

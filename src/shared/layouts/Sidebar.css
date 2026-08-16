@@ -174,3 +174,95 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* Sidebar header inner row — replaces inline height style */
+.sidebar-header-inner {
+  height: 48px;
+}
+
+/* Section label ("Recent") — replaces inline style object */
+.sidebar-section-label {
+  margin: 16px 0 8px 12px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: opacity 0.2s;
+}
+
+.sidebar-section-label.visible {
+  opacity: 1;
+}
+
+.sidebar-section-label.hidden {
+  opacity: 0;
+}
+
+/* Conversation title truncation */
+.menu-item-text--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Version string at the bottom — replaces inline style object */
+.sidebar-version {
+  text-align: center;
+  padding: 12px 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.sidebar-version.visible {
+  opacity: 1;
+}
+
+.sidebar-version.hidden {
+  opacity: 0;
+}
+
+/* ============================================================
+   Mobile Drawer (≤720px)
+   On mobile the sidebar becomes a fixed overlay drawer.
+   ============================================================ */
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 49; /* behind the sidebar (z-index: 50) */
+  animation: backdropFadeIn 0.2s ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .sidebar.mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh; /* dynamic viewport height — avoids iOS address-bar resize */
+    z-index: 50;
+    border-radius: 0 24px 24px 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                width    0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.mobile.open {
+    width: 280px;
+    transform: translateX(0);
+  }
+
+  /* Off-screen when closed — hamburger in TopNav is the trigger to open */
+  .sidebar.mobile.closed {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+}

@@ -8,8 +8,6 @@ class S3Service:
         self.s3_client = boto3.client(
             's3',
             region_name=settings.AWS_REGION,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             config=boto3.session.Config(signature_version='s3v4')
         )
         self.bucket_name = settings.AWS_S3_BUCKET_NAME
@@ -61,5 +59,18 @@ class S3Service:
         except ClientError as e:
             print(f"Error generating presigned read URL: {e}")
             raise e
+
+    def delete_object(self, s3_key: str) -> None:
+        """Delete an object from S3. Raises on failure."""
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+        except ClientError as e:
+            print(f"Error deleting S3 object {s3_key}: {e}")
+            raise e
+
+    def _get_object_bytes(self, s3_key: str) -> bytes:
+        """Fetch raw bytes of an S3 object. Used for document-in-chat multimodal calls."""
+        response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+        return response['Body'].read()
 
 s3_service = S3Service()

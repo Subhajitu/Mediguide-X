@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from app.db.session import get_db
 from app.db.models.user import User
-from app.schemas.auth import UserRegisterRequest, UserRegisterResponse, UserLoginRequest, TokenResponse
-from app.schemas.user import UserProfileResponse
+from app.db.models.family_member import FamilyMember
+from app.schemas.auth import UserRegisterRequest, UserRegisterResponse, UserLoginRequest, TokenResponse, RefreshTokenRequest, RefreshTokenResponse
+from app.schemas.user import UserProfileResponse, UpdateProfileRequest
 from app.core.security import get_current_user
 from app.core.exceptions import BadRequestException
 from app.core.config import settings
@@ -24,8 +26,6 @@ router = APIRouter()
 cognito_client = boto3.client(
     'cognito-idp',
     region_name=settings.AWS_REGION,
-    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
 )
 
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -126,20 +126,86 @@ async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
+@router.post("/refresh", response_model=RefreshTokenResponse)
+async def refresh_token(request_body: RefreshTokenRequest):
+    """
+    Exchange a Cognito refresh token for a new access token + id token.
+    Cognito's REFRESH_TOKEN_AUTH flow does not rotate the refresh token,
+    so the response only contains access_token and id_token.
+    """
+    try:
+        auth_params: dict = {
+            'REFRESH_TOKEN': request_body.refresh_token,
+        }
+
+        response = cognito_client.initiate_auth(
+            ClientId=settings.AWS_COGNITO_APP_CLIENT_ID,
+            AuthFlow='REFRESH_TOKEN_AUTH',
+            AuthParameters=auth_params
+        )
+
+        auth_result = response['AuthenticationResult']
+        return RefreshTokenResponse(
+            access_token=auth_result['AccessToken'],
+            id_token=auth_result['IdToken'],
+            expires_in=auth_result['ExpiresIn']
+        )
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Refresh token is invalid or expired")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
+
+
 @router.get("/me", response_model=UserProfileResponse)
 async def get_me(claims: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    # Find user by cognito sub (or email for mock)
     email = claims.get("email")
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise BadRequestException(detail="User not found in DB")
-        
+
+    count_result = await db.execute(
+        select(func.count()).where(FamilyMember.user_id == user.id)
+    )
+    family_members_count = count_result.scalar() or 0
+
     return UserProfileResponse(
         id=user.id,
         email=user.email,
         full_name=user.full_name,
         created_at=user.created_at,
-        family_members_count=0  # Mock count for now
+        family_members_count=family_members_count
+    )
+
+
+@router.put("/me", response_model=UserProfileResponse)
+async def update_me(
+    request: UpdateProfileRequest,
+    claims: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    email = claims.get("email")
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise BadRequestException(detail="User not found in DB")
+
+    user.full_name = request.full_name
+
+    count_result = await db.execute(
+        select(func.count()).where(FamilyMember.user_id == user.id)
+    )
+    family_members_count = count_result.scalar() or 0
+
+    await db.commit()
+    await db.refresh(user)
+
+    return UserProfileResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        created_at=user.created_at,
+        family_members_count=family_members_count
     )

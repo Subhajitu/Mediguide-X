@@ -7,8 +7,14 @@ export const consultationApi = {
     return response.data;
   },
 
-  sendMessage: async (familyMemberId: string, data: ChatMessageRequest): Promise<ChatMessageResponse> => {
-    const response = await apiClient.post<ChatMessageResponse>(`/consultations/${familyMemberId}/messages`, data);
+  sendMessage: async (
+    familyMemberId: string,
+    data: ChatMessageRequest
+  ): Promise<ChatMessageResponse> => {
+    const response = await apiClient.post<ChatMessageResponse>(
+      `/consultations/${familyMemberId}/messages`,
+      data
+    );
     return response.data;
   },
 
