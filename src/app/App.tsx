@@ -207,7 +207,7 @@ const App: React.FC = () => {
                <Route path="*" element={<Navigate to="/" replace />} />
              </Routes>
 
-             {location.pathname !== '/profile' && (
+             {location.pathname === '/' && (
                <div className={`chat-input-wrapper ${activeConsultationId ? 'chat-mode' : ''} ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
                  <ChatInput suggestions={suggestions} onSend={handleSendMessage} familyMemberId={activeFamilyMember?.id} />
                </div>
