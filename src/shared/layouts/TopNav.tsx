@@ -15,7 +15,7 @@ const allNavLinks = [
   { id: 'timeline', label: 'Health Timeline', icon: 'heart-rate' },
 ];
 
-const comingSoonTabs = ['appointments', 'medication', 'scans', 'timeline'];
+const comingSoonTabs = ['appointments', 'scans', 'timeline'];
 
 interface TopNavProps {
   onAddFamily?: () => void;

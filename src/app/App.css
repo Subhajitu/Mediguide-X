@@ -34,7 +34,7 @@
   flex-direction: column;
   min-width: 0;
   position: relative;
-  padding-bottom: 140px; /* Space for fixed chat input and gaps */
+  padding-bottom: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(248, 250, 252, 0.95)),
     var(--color-background);
@@ -62,26 +62,23 @@
 }
 
 .chat-input-wrapper {
-  position: fixed;
-  bottom: 48px; /* 48px from bottom */
-  left: var(--sidebar-width);
-  right: var(--right-panel-width);
+  position: sticky;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 var(--spacing-8);
+  padding: 0 var(--spacing-8) 48px var(--spacing-8);
+  width: 100%;
   z-index: 10;
-  pointer-events: none;
-  transition: left var(--transition-base), right var(--transition-base), bottom var(--transition-base), transform var(--transition-base);
+  flex-shrink: 0;
 }
 
 .chat-input-wrapper.sidebar-closed {
-  left: var(--sidebar-width-collapsed);
+  /* No longer needed for normal flow, but kept for class matching */
 }
 
 .chat-input-wrapper.chat-mode {
-  bottom: var(--spacing-5);
-  transform: translateY(0);
+  padding-bottom: var(--spacing-5);
 }
 
 .chat-input-wrapper > * {
@@ -133,14 +130,7 @@
   }
 
   .chat-input-wrapper {
-    left: var(--sidebar-width-collapsed);
-    right: 0;
-    bottom: var(--spacing-4);
-    padding: 0 var(--spacing-4);
-  }
-
-  .chat-input-wrapper.sidebar-closed {
-    left: var(--sidebar-width-collapsed);
+    padding: 0 var(--spacing-4) var(--spacing-4) var(--spacing-4);
   }
 
   .main-padding {
@@ -159,10 +149,5 @@
   .sidebar.open .btn,
   .sidebar.open .sidebar-logo-text {
     display: none;
-  }
-
-  .chat-input-wrapper,
-  .chat-input-wrapper.sidebar-closed {
-    left: var(--sidebar-width-collapsed);
   }
 }

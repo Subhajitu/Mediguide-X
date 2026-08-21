@@ -7,6 +7,7 @@ import { ChatInput } from '../features/ai-consultation/ChatInput';
 import { ChatView } from '../features/ai-consultation/ChatView';
 import { RightHealthPanel } from '../features/health-metrics/RightHealthPanel';
 import { MedicalReportsView } from '../features/health-metrics/MedicalReportsView';
+import { MedicationsView } from '../features/medications/MedicationsView';
 import { UserProfileView } from '../features/user/UserProfileView';
 import { AuthModal } from '../shared/components/AuthModal';
 import { FamilySelectorModal } from '../shared/components/FamilySelectorModal';
@@ -26,6 +27,7 @@ const App: React.FC = () => {
   // Derive active tab from URL — no local state needed
   const activeTab = location.pathname === '/reports' ? 'reports'
                   : location.pathname === '/profile' ? 'profile'
+                  : location.pathname === '/medication' ? 'medication'
                   : 'dashboard';
 
   const handleTabChange = (tabId: string) => {
@@ -58,6 +60,9 @@ const App: React.FC = () => {
   const handleSelectConversation = (id: string | null) => {
     setIsTyping(false);
     setConsultationId(id);
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   const handleSendMessage = async (text: string, documentS3Key?: string) => {
@@ -173,6 +178,7 @@ const App: React.FC = () => {
              <Routes>
                <Route path="/reports" element={<MedicalReportsView />} />
                <Route path="/profile" element={<UserProfileView />} />
+               <Route path="/medication" element={<MedicationsView />} />
                <Route path="/" element={
                  <>
                    {!activeConsultationId ? (

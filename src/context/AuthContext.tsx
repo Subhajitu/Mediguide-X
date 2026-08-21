@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { authApi } from '../services/api/authApi';
 import type { User, LoginCredentials, RegisterData } from '../types';
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
 
   // Defined early so it can be referenced by loadUser and the event listener
   const logout = () => {
@@ -27,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('refreshToken'); // security rule: refresh_token lives in sessionStorage
     setUser(null);
     setIsAuthenticated(false);
+    navigate('/', { replace: true });
   };
 
   const loadUser = async () => {

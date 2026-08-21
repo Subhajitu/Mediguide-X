@@ -78,7 +78,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ conversation, isTyping = fal
   };
 
   return (
-    <div className="chat-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="chat-view" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="chat-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eaeaea' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '18px' }}>{conversation.title}</h3>

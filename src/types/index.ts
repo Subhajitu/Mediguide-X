@@ -104,3 +104,26 @@ export interface Conversation {
   date: string;
   messages: Message[];
 }
+
+export interface Medication {
+  id: string;
+  family_member_id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  is_active: boolean;
+}
+
+export interface MedicationCreate {
+  name: string;
+  dosage: string;
+  frequency: string;
+  is_active?: boolean;
+}
+
+export interface MedicationUpdate {
+  name?: string;
+  dosage?: string;
+  frequency?: string;
+  is_active?: boolean;
+}
